@@ -1,0 +1,50 @@
+name: Build
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v7
+      - name: Set up .NET
+        uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Install the Dalamud development distribution
+        shell: pwsh
+        run: |
+          $dest = Join-Path $env:APPDATA 'XIVLauncher\addon\Hooks\dev'
+          New-Item -ItemType Directory -Force -Path $dest | Out-Null
+          Invoke-WebRequest -UseBasicParsing -Uri 'https://goatcorp.github.io/dalamud-distrib/latest.zip' -OutFile dalamud.zip
+          Expand-Archive -Path dalamud.zip -DestinationPath $dest -Force
+
+      - name: Build KeyboundAssist
+        run: dotnet build KeyboundAssist.csproj -c Release
+
+      - name: Upload the plugin package
+        uses: actions/upload-artifact@v7
+        with:
+          name: plugin
+          path: '**/bin/Release/**/latest.zip'
+          if-no-files-found: error
+
+  tests:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v7
+      - name: Set up .NET
+        uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: |
+            10.0.x
+
+      - name: Run the offline checks
+        run: dotnet run --project tests/KeyboundAssist.Tests.csproj -c Release
