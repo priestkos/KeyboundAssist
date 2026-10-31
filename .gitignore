@@ -1,0 +1,15 @@
+.vs/
+obj/
+bin/
+*.user
+*.suo
+.idea/
+.DS_Store
+
+# local-only: previews, mockups and design notes stay out of the repo
+preview.html
+mockup.html
+concept.html
+IDEA.md
+/mockups/
+/docs/mockups/

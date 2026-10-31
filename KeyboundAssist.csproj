@@ -1,0 +1,28 @@
+<Project Sdk="Dalamud.NET.Sdk/15.0.0">
+
+  <PropertyGroup>
+    <Version>0.1.0</Version>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <LangVersion>latest</LangVersion>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <AssemblyName>KeyboundAssist</AssemblyName>
+    <RootNamespace>KeyboundAssist</RootNamespace>
+
+    <Author>PriestKos</Author>
+    <Authors>PriestKos</Authors>
+    <Name>KeyboundAssist</Name>
+    <Punchline>Fills the Keybound Brawler prompt for you; you press Enter.</Punchline>
+    <Description>Reads the enemy prompts in the Keybound Brawler duty and writes the shortest one into the activity's own text field, one character at a time, stopping as soon as the word is complete. It never sends a keystroke: the player presses Enter to submit each word, and typing pauses while the duty prohibits input.</Description>
+    <Tags>keybound brawler;typing;gold saucer;assist</Tags>
+    <RepoUrl>https://github.com/priestkos/KeyboundAssist</RepoUrl>
+  </PropertyGroup>
+
+  <!-- tests/ holds the standalone offline harness; it must never be compiled into the plugin. -->
+  <ItemGroup>
+    <Compile Remove="tests/**" />
+    <None Remove="tests/**" />
+  </ItemGroup>
+
+</Project>
