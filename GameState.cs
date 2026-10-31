@@ -1,3 +1,6 @@
+using System.Numerics;
+using Dalamud.Game.ClientState.Objects.Enums;
+using Dalamud.Game.ClientState.Objects.Types;
 using Dalamud.Game.Text.SeStringHandling;
 using Dalamud.Plugin.Services;
 using FFXIVClientStructs.FFXIV.Component.GUI;
@@ -55,14 +58,16 @@ internal static unsafe class GameState
     }
 
     // KTGEWord draws each enemy's prompt as a text label (node 20) inside its own component node.
-    internal static string[] Words(IGameGui gui)
+    // Cryptic Communications hides that label and covers it with static tiles; the hidden label still
+    // holds the prompt, and live tiles are what tell it apart from a stale leftover label.
+    internal static Prompt[] Prompts(IGameGui gui, IObjectTable objects, Vector3 origin, bool hasOrigin)
     {
         var addon = gui.GetAddonByName<AtkUnitBase>("KTGEWord");
         if (addon == null || !addon->IsVisible) return [];
         var manager = &addon->UldManager;
         if (manager->NodeList == null) return [];
 
-        var words = new List<string>();
+        var prompts = new List<Prompt>();
         for (var i = 0; i < Math.Min((int)manager->NodeListCount, 4096); i++)
         {
             var node = manager->NodeList[i];
@@ -70,12 +75,42 @@ internal static unsafe class GameState
             var component = ((AtkComponentNode*)node)->Component;
             if (component == null) continue;
             var label = FindNode(&component->UldManager, 20);
-            if (label == null || label->Type != NodeType.Text || !Shown(label)) continue;
+            if (label == null || label->Type != NodeType.Text) continue;
+            var labelShown = Shown(label);
+            var masked = !labelShown && Masked(&component->UldManager);
+            if (!labelShown && !masked) continue;
             var text = SeString.Parse(((AtkTextNode*)label)->NodeText.AsSpan()).TextValue.Trim();
-            if (text.Length is > 0 and <= 160 && text.All(c => c is >= ' ' and <= '~' || char.IsLetter(c)))
-                words.Add(text);
+            if (text.Length == 0 || text.Length > 160) continue;
+            if (!text.All(c => c is >= ' ' and <= '~' || char.IsLetter(c))) continue;
+            prompts.Add(new Prompt(node->NodeId, text, masked,
+                node->ScreenX + node->Width * node->ScaleX / 2, node->ScreenY, node->ScaleX, null));
         }
-        return words.ToArray();
+
+        if (!hasOrigin || prompts.Count == 0) return prompts.ToArray();
+
+        var actors = new List<ActorScreen>();
+        foreach (var actor in objects)
+        {
+            if (actor.ObjectKind != ObjectKind.BattleNpc || !actor.IsTargetable || actor.IsDead) continue;
+            if (gui.WorldToScreen(actor.Position, out var screen))
+                actors.Add(new ActorScreen(actor.EntityId, screen, actor.Position));
+        }
+        return PromptMap.WithDistances(prompts.ToArray(), actors, origin);
+    }
+
+    private static bool Masked(AtkUldManager* manager)
+    {
+        var content = FindNode(manager, 4);
+        var tiles = FindNode(manager, 10);
+        if (content == null || tiles == null || !Shown(content) || !Shown(tiles)) return false;
+        // The shipped KTGEWord ULD maps only 17 and 18 to KTGWordNoise.tex; the ordinary aura effects
+        // at 11-16 must never justify reading a hidden label.
+        for (uint id = 17; id <= 18; id++)
+        {
+            var image = FindNode(manager, id);
+            if (image != null && image->Type == NodeType.Image && Shown(image)) return true;
+        }
+        return false;
     }
 
     internal static AtkResNode* FindNode(AtkUldManager* manager, uint id)

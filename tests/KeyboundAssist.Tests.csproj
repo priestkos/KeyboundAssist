@@ -12,6 +12,7 @@
 
   <ItemGroup>
     <Compile Include="../TypingPlan.cs" Link="TypingPlan.cs" />
+    <Compile Include="../PromptMap.cs" Link="PromptMap.cs" />
   </ItemGroup>
 
 </Project>

@@ -16,6 +16,7 @@ public sealed class Plugin : IDalamudPlugin
     [PluginService] internal static IPluginLog Log { get; private set; } = null!;
     [PluginService] internal static IClientState ClientState { get; private set; } = null!;
     [PluginService] internal static IGameGui GameGui { get; private set; } = null!;
+    [PluginService] internal static IObjectTable Objects { get; private set; } = null!;
     [PluginService] internal static IFramework Framework { get; private set; } = null!;
     [PluginService] internal static IChatGui ChatGui { get; private set; } = null!;
 
@@ -136,7 +137,10 @@ public sealed class Plugin : IDalamudPlugin
             return;
         }
 
-        var step = TypingPlan.Next(read.Value.Field, GameState.Words(GameGui), read.Value.Allowed, read.Value.Reason);
+        var player = Objects.LocalPlayer;
+        var prompts = GameState.Prompts(GameGui, Objects, player?.Position ?? default, player != null);
+        var step = TypingPlan.Next(read.Value.Field, prompts, configuration.Priority,
+            read.Value.Allowed, read.Value.Reason);
         status = step.Status;
         if (step.Kind != StepKind.Typing) return;
 

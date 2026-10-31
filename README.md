@@ -6,9 +6,20 @@ Fills in the enemy prompts of the Keybound Brawler duty and stops; the player pr
 
 ## What it does
 
-- **Types the prompt, not the answer** — the shortest visible prompt is written into the duty's own text field one character at a time, then the plugin stops and waits for your Enter.
+- **Types the prompt for you** — the chosen enemy prompt is written into the duty's own text field one character at a time, the plugin then stops and leaves the word sitting there for your Enter.
+- **Picks the target** — shortest visible prompt (default) or the nearest enemy; nearest falls back to the shortest prompt whenever the screen positions are ambiguous rather than guessing.
+- **Finishes what you started** — if the field already holds the beginning of a prompt, it completes that word; case is ignored and accented letters are typed as their base letter.
+- **Reads through Cryptic Communications** — while an enemy's word is veiled under static, the prompt is read from the label the static covers, so the word still gets typed. It is only read while that enemy's static tiles are actually on screen.
 - **Never sends a keystroke** — it writes into the activity's text component in process. Your Enter is the only key pressed during a word, so nothing can land in chat.
 - **Follows the duty's rules** — it does not write while the activity prohibits typing, and it will not delete or overwrite text you typed yourself.
+
+### What it is not meant to do
+
+- **It does not submit.** Enter is yours. There is no auto-submit option, and a word stays in the field until you press it.
+- **It does not play the duty.** No movement, no registration or queueing, no run looping, no score recording, no frame-rate changes.
+- **It is not an AFK bot.** It never types into a field it did not start, never clears your text, and stops dead whenever the duty locks input.
+- **It does not guess.** When two enemies project to nearly the same screen column, that prompt gets no distance and is never chosen for being "nearest".
+- **It does not touch chat.** It has no keyboard route at all, so there is nothing to misdirect into a chat line.
 
 ## How it works
 
@@ -17,9 +28,10 @@ The duty exposes both ends of the loop as game UI, so no OCR and no screen captu
 | Element | Source |
 | --- | --- |
 | Prompt words | `KTGEWord` addon — text label (node 20) inside each enemy's component node |
+| Veiled words | the same label, read while hidden and only if the static tiles (image nodes 17–18) are visible |
+| Nearest enemy | label screen X/Y matched against projected `BattleNpc` positions (48 px × scale, 12 px ambiguity margin) |
 | Answer field | `KTGInput` addon — text input component at node 7 |
 | Typing permission | `KTGInput` `AtkValues[2]` (allowed) and `AtkValues[4]` (lock seconds), plus the component's own `Enabled` flag |
-| Typing lock during a cast | covered by the same permission pair |
 
 Each frame the plugin reads the field, picks the next step, and writes at most one character (`SetText`), so the field itself is always the authority on what has been typed. It only activates the field (`Focus` + `SetFocusNode`) when it is not already the active text input, so your Enter always reaches it. Outside territory 1359 it does nothing. All reads resolve their addon pointers on the frame that uses them; nothing is cached across frames.
 
@@ -35,6 +47,7 @@ Each frame the plugin reads the field, picks the next step, and writes at most o
 
 - **Fill prompts for me** — the master switch; it is on when the plugin first loads.
 - **Delay per character** — 0–300 ms between characters, default 40 ms. The duty scores per submitted word, so the delay is only there to keep the field readable; 0 is one character per frame.
+- **Target** — `Shortest prompt` or `Nearest enemy`. A prompt with no resolvable enemy always sorts last in nearest mode.
 
 The plugin does not persist anything else. It is only active inside the duty.
 
@@ -56,18 +69,19 @@ dotnet build KeyboundAssist.csproj -c Release    # zip in bin/Release/KeyboundAs
 
 ## Tests
 
-The decision logic (`TypingPlan.cs`) has no Dalamud or native dependency, so the harness compiles the same file into a console project and drives it with no game running: shortest-prompt choice, prefix continuation, case and accent handling, text the plugin did not type, a prompt that vanishes mid-word, and the typing lock.
+The decision logic (`TypingPlan.cs`) and the label-to-enemy mapping (`PromptMap.cs`) carry no Dalamud or native dependency, so the harness compiles the same files into a console project and drives them with no game running: shortest-prompt choice, nearest-enemy ordering, prefix continuation, case and accent handling, text the plugin did not type, a prompt that vanishes mid-word, the typing lock, ambiguous and contested label-to-enemy matches, and the saturated scale estimate.
 
 ```
-dotnet run --project tests/KeyboundAssist.Tests.csproj -c Release    # 12 checks
+dotnet run --project tests/KeyboundAssist.Tests.csproj -c Release    # 21 checks
 ```
 
 ## Limits
 
-- **Not verified in game.** The offline checks cover the decision logic only. The native reads and the write path come from two independent live-validated plugins (XivType and Keybound Pilot) but have not been exercised on this client yet; the first real run is the test.
+- **Not verified in game.** The offline checks cover the decision and mapping logic only. The native reads and the write path come from two independent live-validated plugins (XivType and Keybound Pilot) but have not been exercised on this client yet; the first real run is the test.
 - **If the duty keeps the submitted word in the field**, the plugin waits rather than deleting it — clear the field yourself (Backspace) and it resumes. This is why it never clears text silently.
+- The nearest-enemy match is a screen-space heuristic: labels within 48 px × scale of an enemy are matched, two enemies under 12 px apart resolve nothing, and beyond about 24 yalms the label stops carrying a distance.
+- The static-reveal read trusts the label text behind the tiles. If a patch stops hiding the label there, the word simply stops being veiled — nothing breaks.
 - English prompt labels only (node 20). The Japanese client shows the hiragana reading at node 22 and is not read.
-- Words hidden by Cryptic Communications are not read: the label is not visible, so the prompt is not a candidate.
 - The plugin does not submit. Every word costs you one Enter.
 - Territory ids and addon node ids are taken from the 7.x client; a patch that renumbers them makes the plugin wait rather than misbehave, and `/keyboundassist status` says which part is missing.
 
@@ -75,9 +89,10 @@ dotnet run --project tests/KeyboundAssist.Tests.csproj -c Release    # 12 checks
 
 ```
 Plugin.cs          entry point, command, per-frame tick, dispose
-GameState.cs       KTGInput / KTGEWord reads, permission, focus
+GameState.cs       KTGInput / KTGEWord reads, permission, focus, actor projection
+PromptMap.cs       label→enemy matching and distance (pure, tested offline)
 TypingPlan.cs      pure decision logic (compiled by the test harness)
-Configuration.cs   enabled flag and character delay
+Configuration.cs   enabled flag, character delay, target priority
 AssistWindow.cs    the window
-tests/             offline harness for TypingPlan.cs
+tests/             offline harness for TypingPlan.cs and PromptMap.cs
 ```

@@ -22,40 +22,44 @@ internal static class TypingPlan
         return builder.ToString().Normalize(NormalizationForm.FormC);
     }
 
-    // The duty scores per submitted word, so the shortest prompt is the cheapest one to finish.
-    internal static string? Choose(IReadOnlyList<string> words, string prefix)
+    // The prompts that continue what is already in the field. One prompt is aimed at per word:
+    // whichever the configured priority puts first.
+    internal static Prompt? Choose(IReadOnlyList<Prompt> prompts, string prefix, TargetPriority priority)
     {
-        string? best = null;
         var wanted = Typeable(prefix);
-        foreach (var word in words)
-        {
-            if (!Typeable(word).StartsWith(wanted, StringComparison.OrdinalIgnoreCase)) continue;
-            if (best == null || word.Length < best.Length) best = word;
-        }
-        return best;
+        var matches = prompts
+            .Where(p => Typeable(p.Text).StartsWith(wanted, StringComparison.OrdinalIgnoreCase))
+            .ToArray();
+        if (matches.Length == 0) return null;
+        // An unmatched prompt has no distance and sorts last, so nearest-enemy falls back to the
+        // shortest prompt instead of guessing.
+        return priority == TargetPriority.NearestEnemy
+            ? matches.OrderBy(p => p.Distance ?? float.MaxValue).ThenBy(p => p.Text.Length).ThenBy(p => p.NodeId).First()
+            : matches.OrderBy(p => p.Text.Length).ThenBy(p => p.NodeId).First();
     }
 
     // The field is the authority on what has been typed: the plugin only ever appends the next
     // character, and never deletes or overwrites what the player put there.
-    internal static Step Next(string field, IReadOnlyList<string> words, bool allowed, string reason)
+    internal static Step Next(string field, IReadOnlyList<Prompt> prompts, TargetPriority priority,
+        bool allowed, string reason)
     {
         if (!allowed) return new(StepKind.Unavailable, reason);
         if (field.Length == 0)
         {
-            var fresh = Choose(words, "");
+            var fresh = Choose(prompts, "", priority);
             return fresh == null
                 ? new(StepKind.Waiting, "Waiting for an enemy prompt.")
-                : new(StepKind.Typing, $"Typing '{fresh}'.", fresh, fresh[0]);
+                : new(StepKind.Typing, $"Typing '{fresh.Value.Text}'.", fresh.Value.Text, fresh.Value.Text[0]);
         }
 
-        var match = Choose(words, field);
+        var match = Choose(prompts, field, priority);
         if (match == null)
             return new(StepKind.Waiting, $"The input holds '{field}'. Waiting for it to clear.");
 
         var typed = Typeable(field).Length;
-        var target = Typeable(match);
+        var target = Typeable(match.Value.Text);
         if (typed >= target.Length)
-            return new(StepKind.Ready, $"'{match}' is typed. Press Enter.", match);
-        return new(StepKind.Typing, $"Typing '{match}'.", match, target[typed]);
+            return new(StepKind.Ready, $"'{match.Value.Text}' is typed. Press Enter.", match.Value.Text);
+        return new(StepKind.Typing, $"Typing '{match.Value.Text}'.", match.Value.Text, target[typed]);
     }
 }

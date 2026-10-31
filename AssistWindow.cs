@@ -22,6 +22,14 @@ internal sealed class AssistWindow(Configuration configuration, Action save, Fun
             save();
         }
 
+        var priority = (int)configuration.Priority;
+        ImGui.SetNextItemWidth(160f);
+        if (ImGui.Combo("Target", ref priority, new[] { "Shortest prompt", "Nearest enemy" }, 2))
+        {
+            configuration.Priority = (TargetPriority)priority;
+            save();
+        }
+
         ImGui.Separator();
         ImGui.TextWrapped("The plugin types the word and stops. Press Enter yourself to submit it, " +
                           "and the next prompt is filled once the field is empty again.");

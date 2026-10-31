@@ -11,5 +11,11 @@ internal sealed class Configuration : IPluginConfiguration
 
     public int CharDelayMs { get; set; } = 40;
 
-    public void Normalize() => CharDelayMs = Math.Clamp(CharDelayMs, 0, 300);
+    public TargetPriority Priority { get; set; } = TargetPriority.ShortestPrompt;
+
+    public void Normalize()
+    {
+        CharDelayMs = Math.Clamp(CharDelayMs, 0, 300);
+        if (!Enum.IsDefined(Priority)) Priority = TargetPriority.ShortestPrompt;
+    }
 }
