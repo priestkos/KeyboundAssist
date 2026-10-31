@@ -13,12 +13,8 @@
         position: absolute;
         inset: 0;
         opacity: 0;
-        transition: opacity 0.6s ease;
         pointer-events: none;
-      }
-
-      .scene.active {
-        opacity: 1;
+        will-change: transform, opacity;
       }
 
       .video-caption {
@@ -34,6 +30,7 @@
         color: #fff;
         background: linear-gradient(0deg, rgba(0, 0, 0, 0.88) 0%, rgba(0, 0, 0, 0.5) 70%, transparent 100%);
         text-shadow: 0 1px 4px #000;
+        transition: none;
       }
 
       .mockup-banner {
@@ -41,7 +38,6 @@
         padding: 8px 16px;
       }
 
-      /* Scene-specific layout (mirrors screenshot HTML) */
       .s1 .win { top: 140px; left: 80px; }
       .s2 .win { top: 48px; right: 48px; width: 340px; }
       .s2 .ep1 { top: 220px; left: 180px; }
@@ -61,6 +57,86 @@
         font-size: 13px;
         color: #c9a227;
       }
+
+      .control-press {
+        transform: scale(0.97);
+        filter: brightness(1.08);
+      }
+
+      label.row.control-press,
+      .slider-row.control-press,
+      .combo-row.control-press {
+        transform: none;
+      }
+
+      label.row.control-press .checkbox,
+      .slider-row.control-press input[type="range"],
+      .combo-row.control-press select {
+        transform: scale(0.94);
+        filter: brightness(1.12);
+      }
+
+      .chat-line {
+        opacity: 0;
+        transform: translateY(6px);
+      }
+
+      .chat-line.visible {
+        opacity: 1;
+        transform: translateY(0);
+      }
+
+      #mock-cursor {
+        position: absolute;
+        left: 0;
+        top: 0;
+        z-index: 10001;
+        width: 28px;
+        height: 28px;
+        pointer-events: none;
+        opacity: 0;
+        filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.85));
+      }
+
+      #mock-cursor.visible {
+        opacity: 1;
+      }
+
+      #mock-cursor.clicking svg {
+        transform: scale(0.92);
+        transform-origin: 2px 2px;
+      }
+
+      .click-ripple {
+        position: absolute;
+        z-index: 10000;
+        width: 12px;
+        height: 12px;
+        margin: -6px 0 0 -6px;
+        border-radius: 50%;
+        pointer-events: none;
+        border: 2px solid rgba(255, 255, 255, 0.75);
+        background: rgba(255, 255, 255, 0.15);
+        box-shadow: 0 0 8px rgba(90, 159, 212, 0.45);
+      }
+
+      .typing-caret {
+        display: inline-block;
+        width: 2px;
+        height: 1em;
+        background: #fff;
+        vertical-align: text-bottom;
+      }
+
+      .input-bar.focused {
+        box-shadow: 0 0 28px rgba(201, 162, 39, 0.45);
+        border-color: #e8c868;
+      }
+
+      .enter-hint.pulse {
+        opacity: 1;
+        text-shadow: 0 0 12px rgba(201, 162, 39, 0.6);
+      }
     </style>
   </head>
   <body>
@@ -72,20 +148,23 @@
       <div class="dalamud-window win">
         <div class="dalamud-title">Keybound Assist</div>
         <div class="dalamud-body">
-          <label class="row">
-            <input type="checkbox" class="checkbox" checked disabled />
+          <label class="row" id="s1-check-row">
+            <input type="checkbox" class="checkbox" id="s1-check" checked />
             Fill prompts for me
           </label>
-          <div class="slider-row">
+          <div class="slider-row" id="s1-slider-row">
             <div class="label">Delay per character (ms)</div>
             <div class="slider-track">
-              <input type="range" min="0" max="300" value="40" disabled />
-              <span class="slider-value">40</span>
+              <input type="range" id="s1-delay" min="0" max="300" value="40" />
+              <span class="slider-value" id="s1-delay-val">40</span>
             </div>
           </div>
-          <div class="combo-row">
+          <div class="combo-row" id="s1-target-row">
             <div class="label">Target</div>
-            <select disabled><option selected>Shortest prompt</option></select>
+            <select id="s1-target">
+              <option value="shortest" selected>Shortest prompt</option>
+              <option value="nearest">Nearest enemy</option>
+            </select>
           </div>
           <div class="separator"></div>
           <p class="help-text">The plugin types the word and stops. Press Enter yourself to submit it.</p>
@@ -99,7 +178,7 @@
       <div class="game-backdrop"></div>
       <div class="duty-title">Keybound Brawler · Territory 1359</div>
       <div class="duty-hud">
-        <div class="enemy-prompt ep1 shortest">bolt</div>
+        <div class="enemy-prompt ep1 shortest" id="s2-prompt">bolt</div>
         <div class="enemy-prompt ep2">thunderclap</div>
         <div class="enemy-prompt ep3">meteor</div>
         <div class="input-bar" id="s2-input">b</div>
@@ -117,7 +196,7 @@
       <div class="duty-title">Keybound Brawler</div>
       <div class="duty-hud">
         <div class="enemy-prompt ep-far">guardian</div>
-        <div class="enemy-prompt ep-near nearest">strike</div>
+        <div class="enemy-prompt ep-near nearest" id="s3-prompt">strike</div>
         <div class="enemy-prompt ep-veiled">
           <span class="static-tiles">
             <span class="static-tile"></span><span class="static-tile"></span><span class="static-tile"></span>
@@ -129,9 +208,11 @@
       <div class="dalamud-window win">
         <div class="dalamud-title">Keybound Assist</div>
         <div class="dalamud-body">
-          <div class="combo-row">
+          <div class="combo-row" id="s3-target-row">
             <div class="label">Target</div>
-            <select disabled><option selected>Nearest enemy</option></select>
+            <select id="s3-target" disabled>
+              <option selected>Nearest enemy</option>
+            </select>
           </div>
           <p class="status-line">Typing 'strike'.</p>
         </div>
@@ -141,16 +222,27 @@
     <div id="scene4" class="scene s4">
       <div class="game-backdrop"></div>
       <div class="duty-title">Any territory</div>
-      <div class="chat-panel">
-        <div class="chat-line echo">&gt; /keyboundassist status</div>
-        <div class="chat-line plugin">[Keybound Assist] Not in Keybound Brawler.</div>
-        <div class="chat-line echo">&gt; /keyboundassist status</div>
-        <div class="chat-line plugin">[Keybound Assist] Assist is off.</div>
-        <div class="chat-line plugin">[Keybound Assist] Usage: /keyboundassist [on|off|status]</div>
+      <div class="chat-panel" id="s4-chat">
+        <div class="chat-line echo" data-at="12.35">&gt; /keyboundassist status</div>
+        <div class="chat-line plugin" data-at="12.65">[Keybound Assist] Not in Keybound Brawler.</div>
+        <div class="chat-line echo" data-at="13.05">&gt; /keyboundassist off</div>
+        <div class="chat-line echo" data-at="13.35">&gt; /keyboundassist status</div>
+        <div class="chat-line plugin" data-at="13.65">[Keybound Assist] Assist is off.</div>
+        <div class="chat-line echo" data-at="14.05">&gt; /keyboundassist on</div>
+        <div class="chat-line echo" data-at="14.35">&gt; /keyboundassist status</div>
+        <div class="chat-line plugin" data-at="14.65">[Keybound Assist] Waiting for the Keybound Brawler input.</div>
+        <div class="chat-line echo" data-at="15.05">&gt; /keyboundassist help</div>
+        <div class="chat-line plugin" data-at="15.35">[Keybound Assist] Usage: /keyboundassist [on|off|status]</div>
       </div>
+      <div class="chat-input-hint">Illustrative chat lines — not a real client log</div>
       <div class="dalamud-window win">
         <div class="dalamud-title">Keybound Assist</div>
         <div class="dalamud-body">
+          <label class="row">
+            <input type="checkbox" class="checkbox" id="s4-check" disabled />
+            Fill prompts for me
+          </label>
+          <div class="separator"></div>
           <p class="status-line">Assist is off.</p>
         </div>
       </div>
@@ -161,8 +253,8 @@
       <div class="duty-title">Keybound Brawler</div>
       <div class="duty-hud">
         <div class="enemy-prompt" style="top: 280px; left: 520px">slash</div>
-        <div class="input-bar">slash</div>
-        <div class="enter-hint">Press Enter to submit (player only)</div>
+        <div class="input-bar" id="s5-input">slash</div>
+        <div class="enter-hint" id="s5-enter-hint">Press Enter to submit (player only)</div>
       </div>
       <div class="dalamud-window win">
         <div class="dalamud-title">Keybound Assist</div>
@@ -173,34 +265,148 @@
     </div>
 
     <div class="video-caption" id="caption">Keybound Assist — mock-up walkthrough</div>
+    <div id="ripple-layer"></div>
+    <div id="mock-cursor" aria-hidden="true">
+      <svg width="28" height="28" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path
+          d="M5 3L5 19L9 15L13 21L15 20L11 14L17 14L5 3Z"
+          fill="#fff"
+          stroke="#1a1a1a"
+          stroke-width="1.2"
+          stroke-linejoin="round"
+        />
+      </svg>
+    </div>
 
     <script>
       const scenes = [
-        { id: "scene1", start: 0, end: 4.2, caption: "Settings window — Fill prompts, delay, target, status" },
-        { id: "scene2", start: 3.6, end: 8.4, caption: "In-duty typing — one character at a time into KTGInput" },
-        { id: "scene3", start: 7.8, end: 12.6, caption: "Cryptic Communications read + Nearest enemy targeting" },
-        { id: "scene4", start: 12.0, end: 16.8, caption: "Commands — /keyboundassist status and usage in chat" },
+        { id: "scene1", start: 0, end: 4.4, caption: "Settings window — Fill prompts, delay, target, status" },
+        { id: "scene2", start: 3.8, end: 8.6, caption: "In-duty typing — one character at a time into KTGInput" },
+        { id: "scene3", start: 8.0, end: 12.8, caption: "Cryptic Communications read + Nearest enemy targeting" },
+        { id: "scene4", start: 12.2, end: 16.8, caption: "Commands — /keyboundassist status and usage in chat" },
         { id: "scene5", start: 16.2, end: 21.0, caption: "Word complete — plugin stops; you press Enter" },
       ];
 
       const boltChars = "bolt";
       const strikeChars = "strike";
 
-      function fadeWeight(t, start, end) {
-        const fade = 0.6;
-        if (t < start) return 0;
-        if (t > end) return 0;
-        if (t < start + fade) return (t - start) / fade;
-        if (t > end - fade) return (end - t) / fade;
-        return 1;
+      const clicks = [
+        { t: 0.95, x: 104, y: 198 },
+        { t: 1.85, x: 210, y: 252 },
+        { t: 2.85, x: 176, y: 292 },
+        { t: 8.35, x: 120, y: 118 },
+        { t: 13.15, x: 180, y: 580 },
+        { t: 18.6, x: 640, y: 588 },
+        { t: 19.4, x: 640, y: 520 },
+      ];
+
+      const cursorPath = [
+        { t: 0.35, x: 640, y: 420 },
+        { t: 0.85, x: 104, y: 198 },
+        { t: 1.55, x: 104, y: 198 },
+        { t: 1.75, x: 210, y: 252 },
+        { t: 2.55, x: 248, y: 252 },
+        { t: 2.75, x: 176, y: 292 },
+        { t: 3.35, x: 260, y: 380 },
+        { t: 4.0, x: 900, y: 360 },
+        { t: 4.6, x: 220, y: 248 },
+        { t: 8.0, x: 640, y: 320 },
+        { t: 8.25, x: 120, y: 118 },
+        { t: 9.2, x: 700, y: 318 },
+        { t: 12.0, x: 200, y: 560 },
+        { t: 12.8, x: 180, y: 580 },
+        { t: 13.2, x: 180, y: 580 },
+        { t: 16.0, x: 640, y: 400 },
+        { t: 17.2, x: 720, y: 520 },
+        { t: 18.4, x: 640, y: 588 },
+        { t: 19.3, x: 640, y: 520 },
+        { t: 20.5, x: 720, y: 620 },
+      ];
+
+      function easeInOutCubic(x) {
+        return x < 0.5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2;
+      }
+
+      function easeOutCubic(x) {
+        return 1 - Math.pow(1 - x, 3);
+      }
+
+      function clamp(v, lo, hi) {
+        return Math.min(hi, Math.max(lo, v));
+      }
+
+      function sceneMotion(t, start, end) {
+        const fade = 0.55;
+        let opacity = 0;
+        let ty = 14;
+        if (t < start) {
+          opacity = 0;
+          ty = 14;
+        } else if (t > end) {
+          opacity = 0;
+          ty = -10;
+        } else if (t < start + fade) {
+          const p = (t - start) / fade;
+          const e = easeOutCubic(p);
+          opacity = e;
+          ty = 14 * (1 - e);
+        } else if (t > end - fade) {
+          const p = (end - t) / fade;
+          const e = easeOutCubic(p);
+          opacity = e;
+          ty = -10 * (1 - e);
+        } else {
+          opacity = 1;
+          ty = 0;
+        }
+        return { opacity, ty };
+      }
+
+      function cursorAt(t) {
+        if (t <= cursorPath[0].t) return { x: cursorPath[0].x, y: cursorPath[0].y };
+        for (let i = 0; i < cursorPath.length - 1; i++) {
+          const a = cursorPath[i];
+          const b = cursorPath[i + 1];
+          if (t >= a.t && t <= b.t) {
+            const span = b.t - a.t || 1;
+            const p = easeInOutCubic((t - a.t) / span);
+            return { x: a.x + (b.x - a.x) * p, y: a.y + (b.y - a.y) * p };
+          }
+        }
+        const last = cursorPath[cursorPath.length - 1];
+        return { x: last.x, y: last.y };
+      }
+
+      function nearClick(t, windowSec = 0.1) {
+        for (const c of clicks) {
+          if (Math.abs(t - c.t) <= windowSec) return c;
+        }
+        return null;
+      }
+
+      function pressActive(t, clickT) {
+        return t >= clickT && t <= clickT + 0.14;
+      }
+
+      function rippleStyle(t, click) {
+        const dt = t - click.t;
+        if (dt < 0 || dt > 0.45) return null;
+        const p = dt / 0.45;
+        const scale = 1 + p * 4.5;
+        const opacity = (1 - p) * 0.85;
+        return { left: click.x, top: click.y, transform: `scale(${scale})`, opacity };
+      }
+
+      function caretVisible(t, rate = 2) {
+        return Math.floor(t * rate) % 2 === 0;
       }
 
       window.seekWalkthrough = function (t) {
         for (const s of scenes) {
           const el = document.getElementById(s.id);
-          const w = fadeWeight(t, s.start, s.end);
-          el.style.opacity = String(w);
-          el.classList.toggle("active", w > 0.01);
+          const { opacity, ty } = sceneMotion(t, s.start, s.end);
+          el.style.opacity = String(opacity);
+          el.style.transform = `translateY(${ty}px)`;
         }
 
         let cap = "Keybound Assist — mock-up walkthrough";
@@ -209,18 +415,119 @@
         }
         document.getElementById("caption").textContent = cap;
 
-        if (t >= 3.6 && t <= 8.4) {
-          const local = t - 4.0;
-          const n = Math.min(boltChars.length, Math.max(0, Math.floor(local * 2.5)));
-          const text = boltChars.slice(0, n);
-          document.getElementById("s2-input").innerHTML =
-            text + (n < boltChars.length ? '<span class="cursor"></span>' : "");
+        /* Scene 1 — settings interactions */
+        const s1Opacity = sceneMotion(t, scenes[0].start, scenes[0].end).opacity;
+        if (s1Opacity > 0.05) {
+          const check = document.getElementById("s1-check");
+          const checkRow = document.getElementById("s1-check-row");
+          const slider = document.getElementById("s1-delay");
+          const sliderVal = document.getElementById("s1-delay-val");
+          const sliderRow = document.getElementById("s1-slider-row");
+          const target = document.getElementById("s1-target");
+          const targetRow = document.getElementById("s1-target-row");
+
+          let enabled = true;
+          if (t >= 0.95 && t < 1.35) enabled = false;
+          check.checked = enabled;
+
+          let delay = 40;
+          if (t >= 1.85 && t < 2.55) {
+            const p = easeInOutCubic((t - 1.85) / 0.7);
+            delay = Math.round(40 + 60 * p);
+          } else if (t >= 2.55) {
+            delay = 100;
+          }
+          slider.value = String(delay);
+          sliderVal.textContent = String(delay);
+
+          if (t >= 2.85 && t < 3.25) {
+            target.value = "nearest";
+          } else {
+            target.value = "shortest";
+          }
+
+          checkRow.classList.toggle("control-press", pressActive(t, 0.95));
+          sliderRow.classList.toggle("control-press", pressActive(t, 1.85) || (t >= 1.85 && t <= 2.55));
+          targetRow.classList.toggle("control-press", pressActive(t, 2.85));
         }
 
-        if (t >= 7.8 && t <= 12.6) {
-          const local = t - 8.2;
+        /* Scene 2 — typing */
+        const s2Opacity = sceneMotion(t, scenes[1].start, scenes[1].end).opacity;
+        if (s2Opacity > 0.05 && t >= 4.0 && t <= 8.6) {
+          const local = t - 4.2;
+          const n = Math.min(boltChars.length, Math.max(0, Math.floor(local * 2.5)));
+          const text = boltChars.slice(0, n);
+          const input = document.getElementById("s2-input");
+          const caret = n < boltChars.length && caretVisible(t) ? '<span class="typing-caret"></span>' : "";
+          input.innerHTML = text + caret;
+          input.classList.toggle("focused", n > 0 && n < boltChars.length);
+          const prompt = document.getElementById("s2-prompt");
+          prompt.style.transform = n > 0 ? "scale(1.03)" : "";
+          prompt.style.boxShadow = n > 0 ? "0 0 16px rgba(125, 216, 125, 0.35)" : "";
+        }
+
+        /* Scene 3 — nearest + cryptic typing */
+        const s3Opacity = sceneMotion(t, scenes[2].start, scenes[2].end).opacity;
+        if (s3Opacity > 0.05 && t >= 8.2 && t <= 12.8) {
+          const local = t - 8.4;
           const n = Math.min(strikeChars.length, Math.max(2, Math.floor(local * 2.2)));
           document.getElementById("s3-input").textContent = strikeChars.slice(0, n);
+          const near = document.getElementById("s3-prompt");
+          near.style.transform = t >= 8.4 ? "scale(1.04)" : "";
+          document.getElementById("s3-target-row").classList.toggle("control-press", pressActive(t, 8.35));
+        }
+
+        /* Scene 4 — chat reveal */
+        const s4Opacity = sceneMotion(t, scenes[3].start, scenes[3].end).opacity;
+        if (s4Opacity > 0.05) {
+          const lines = document.querySelectorAll("#s4-chat .chat-line");
+          for (const line of lines) {
+            const at = parseFloat(line.getAttribute("data-at"));
+            const p = clamp((t - at) / 0.28, 0, 1);
+            const e = easeOutCubic(p);
+            line.style.opacity = String(e);
+            line.style.transform = `translateY(${6 * (1 - e)}px)`;
+          }
+          const s4Check = document.getElementById("s4-check");
+          s4Check.checked = t >= 14.05;
+        }
+
+        /* Scene 5 — enter hint */
+        const s5Opacity = sceneMotion(t, scenes[4].start, scenes[4].end).opacity;
+        if (s5Opacity > 0.05) {
+          const hint = document.getElementById("s5-enter-hint");
+          const input = document.getElementById("s5-input");
+          const pulse = t >= 19.2 && t <= 20.2 ? 0.5 + 0.5 * Math.sin((t - 19.2) * 8) : t >= 18.6 ? 0.85 : 1;
+          hint.style.opacity = String(pulse);
+          hint.classList.toggle("pulse", t >= 19.2);
+          input.classList.toggle("focused", t >= 18.4 && t <= 20.0);
+        }
+
+        /* Cursor + ripples */
+        const cursor = document.getElementById("mock-cursor");
+        const pos = cursorAt(t);
+        const showCursor =
+          (t >= 0.3 && t <= 3.6) ||
+          (t >= 7.9 && t <= 9.5) ||
+          (t >= 12.0 && t <= 15.8) ||
+          (t >= 16.5 && t <= 20.6);
+        cursor.classList.toggle("visible", showCursor);
+        cursor.style.transform = `translate(${pos.x}px, ${pos.y}px)`;
+        const nc = nearClick(t, 0.08);
+        cursor.classList.toggle("clicking", nc !== null && showCursor);
+
+        const layer = document.getElementById("ripple-layer");
+        layer.innerHTML = "";
+        for (const c of clicks) {
+          const style = rippleStyle(t, c);
+          if (!style) continue;
+          const el = document.createElement("div");
+          el.className = "click-ripple";
+          el.style.left = style.left + "px";
+          el.style.top = style.top + "px";
+          el.style.transform = style.transform;
+          el.style.opacity = String(style.opacity);
+          layer.appendChild(el);
         }
       };
 
