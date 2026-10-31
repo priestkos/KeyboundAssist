@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Mock-up: Cryptic Communications & nearest target</title>
+    <link rel="stylesheet" href="common.css" />
+    <style>
+      .dalamud-window {
+        top: 48px;
+        left: 48px;
+        width: 360px;
+      }
+      .ep-near { top: 300px; left: 640px; }
+      .ep-far { top: 260px; left: 320px; opacity: 0.75; }
+      .ep-veiled { top: 380px; left: 480px; }
+    </style>
+  </head>
+  <body>
+    <div class="game-backdrop"></div>
+    <div class="duty-title">Keybound Brawler</div>
+    <div class="mockup-banner">Mock-up</div>
+    <div class="scene-label">Cryptic Communications (veiled label) + Nearest enemy target mode</div>
+
+    <div class="duty-hud">
+      <div class="enemy-prompt ep-far">guardian</div>
+      <div class="enemy-prompt ep-near nearest">strike</div>
+      <div class="enemy-prompt ep-veiled">
+        <span class="static-tiles">
+          <span class="static-tile"></span>
+          <span class="static-tile"></span>
+          <span class="static-tile"></span>
+          <span class="static-tile"></span>
+          <span class="static-tile"></span>
+        </span>
+        <span style="opacity: 0.35">veil</span>
+      </div>
+      <div class="input-bar">st<span class="cursor"></span></div>
+    </div>
+
+    <div class="dalamud-window">
+      <div class="dalamud-title">Keybound Assist</div>
+      <div class="dalamud-body">
+        <label class="row">
+          <input type="checkbox" class="checkbox" checked disabled />
+          Fill prompts for me
+        </label>
+        <div class="combo-row">
+          <div class="label">Target</div>
+          <select disabled>
+            <option>Shortest prompt</option>
+            <option selected>Nearest enemy</option>
+          </select>
+        </div>
+        <div class="separator"></div>
+        <p class="help-text">Reads veiled prompts from the label behind static tiles (nodes 17–18) while tiles are on screen.</p>
+        <div class="separator"></div>
+        <p class="status-line">Typing 'strike'.</p>
+      </div>
+    </div>
+
+    <div class="callout" style="top: 200px; right: 60px">
+      Nearest enemy mode matches label screen position to BattleNpc projection; ambiguous columns are never guessed.
+    </div>
+  </body>
+</html>

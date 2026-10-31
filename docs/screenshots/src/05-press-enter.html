@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Mock-up: Word ready — Press Enter</title>
+    <link rel="stylesheet" href="common.css" />
+    <style>
+      .dalamud-window {
+        bottom: 48px;
+        right: 48px;
+        width: 360px;
+      }
+      .enter-hint {
+        position: absolute;
+        bottom: 188px;
+        left: 50%;
+        transform: translateX(-50%);
+        font-size: 13px;
+        color: #c9a227;
+        letter-spacing: 0.05em;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="game-backdrop"></div>
+    <div class="duty-title">Keybound Brawler</div>
+    <div class="mockup-banner">Mock-up</div>
+    <div class="scene-label">Completion state — plugin stops; player submits with Enter</div>
+
+    <div class="duty-hud">
+      <div class="enemy-prompt" style="top: 280px; left: 520px">slash</div>
+      <div class="input-bar">slash</div>
+      <div class="enter-hint">▼ Press Enter to submit (player only — plugin does not)</div>
+    </div>
+
+    <div class="dalamud-window">
+      <div class="dalamud-title">Keybound Assist</div>
+      <div class="dalamud-body">
+        <label class="row">
+          <input type="checkbox" class="checkbox" checked disabled />
+          Fill prompts for me
+        </label>
+        <div class="separator"></div>
+        <p class="help-text">
+          The plugin types the word and stops. Press Enter yourself to submit it, and the next prompt is filled once the field is empty again.
+        </p>
+        <div class="separator"></div>
+        <p class="status-line">'slash' is typed. Press Enter.</p>
+      </div>
+    </div>
+
+    <div class="callout" style="top: 100px; left: 48px">
+      Prefix continuation: if you typed part of a prompt, the plugin completes that word (case and accents normalized).
+    </div>
+  </body>
+</html>

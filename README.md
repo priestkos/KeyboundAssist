@@ -4,6 +4,20 @@ Fills in the enemy prompts of the Keybound Brawler duty and stops; the player pr
 
 `/keyboundassist` · Dalamud API 15 · .NET 10
 
+## Screenshots
+
+These images are **mock-ups** (HTML rendered to PNG). They are not real in-game captures and do not show the actual FFXIV client UI.
+
+| | |
+| --- | --- |
+| ![Config window mock-up](docs/screenshots/01-config-window.png) | **Settings window** — master switch, delay slider (0–300 ms), target combo (shortest / nearest), help text, and live status line. |
+| ![In-duty typing mock-up](docs/screenshots/02-duty-typing.png) | **Prompt fill** — enemy prompt labels and the duty input field with partial typing; status shows the active target word. |
+| ![Cryptic & nearest mock-up](docs/screenshots/03-cryptic-nearest.png) | **Cryptic Communications & nearest target** — static tiles over a veiled label, nearest-enemy targeting, typing in progress. |
+| ![Chat commands mock-up](docs/screenshots/04-chat-commands.png) | **Commands** — `/keyboundassist status` output in chat, `on`/`off` toggles (no chat echo), and usage text for unknown args. |
+| ![Press Enter mock-up](docs/screenshots/05-press-enter.png) | **Ready to submit** — full word in the field; status `'…' is typed. Press Enter.` (plugin does not submit). |
+
+Sources: `docs/screenshots/src/` (re-render with `npm install` and `node render-screenshots.mjs` in that folder).
+
 ## What it does
 
 - **Types the prompt for you** — the chosen enemy prompt is written into the duty's own text field one character at a time, the plugin then stops and leaves the word sitting there for your Enter.
