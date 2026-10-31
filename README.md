@@ -1,5 +1,7 @@
 # Keybound Assist
 
+<img src="images/icon.png" width="96">
+
 Fills in the enemy prompts of the Keybound Brawler duty and stops; the player presses Enter to submit each word.
 
 `/keyboundassist` · Dalamud API 15 · .NET 10
