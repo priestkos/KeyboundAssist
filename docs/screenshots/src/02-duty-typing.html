@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Mock-up: In-duty typing</title>
+    <link rel="stylesheet" href="common.css" />
+    <style>
+      .dalamud-window {
+        top: 48px;
+        right: 48px;
+        width: 340px;
+      }
+      .ep1 { top: 220px; left: 180px; }
+      .ep2 { top: 280px; left: 520px; }
+      .ep3 { top: 340px; left: 860px; }
+    </style>
+  </head>
+  <body>
+    <div class="game-backdrop"></div>
+    <div class="duty-title">Keybound Brawler · Territory 1359</div>
+    <div class="mockup-banner">Mock-up</div>
+    <div class="scene-label">In-duty prompt fill — KTGInput field, KTGEWord labels, shortest-target highlight</div>
+
+    <div class="duty-hud">
+      <div class="enemy-prompt ep1 shortest">bolt</div>
+      <div class="enemy-prompt ep2">thunderclap</div>
+      <div class="enemy-prompt ep3">meteor</div>
+      <div class="input-bar">bo<span class="cursor"></span></div>
+    </div>
+
+    <div class="dalamud-window">
+      <div class="dalamud-title">Keybound Assist</div>
+      <div class="dalamud-body">
+        <label class="row">
+          <input type="checkbox" class="checkbox" checked disabled />
+          Fill prompts for me
+        </label>
+        <div class="slider-row">
+          <div class="label">Delay per character (ms)</div>
+          <div class="slider-track">
+            <input type="range" min="0" max="300" value="40" disabled />
+            <span class="slider-value">40</span>
+          </div>
+        </div>
+        <div class="combo-row">
+          <div class="label">Target</div>
+          <select disabled>
+            <option selected>Shortest prompt</option>
+          </select>
+        </div>
+        <div class="separator"></div>
+        <p class="status-line">Typing 'bolt'.</p>
+      </div>
+    </div>
+
+    <div class="callout" style="bottom: 200px; left: 48px">
+      Writes one character at a time into the duty text field (KTGInput). No keystrokes — player presses Enter to submit.
+    </div>
+  </body>
+</html>

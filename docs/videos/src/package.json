@@ -1,0 +1,11 @@
+{
+  "name": "keyboundassist-video-render",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "playwright": "^1.49.0"
+  },
+  "scripts": {
+    "render": "node render-video.mjs"
+  }
+}

@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Mock-up: Config window</title>
+    <link rel="stylesheet" href="common.css" />
+    <style>
+      .dalamud-window {
+        top: 140px;
+        left: 80px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="game-backdrop"></div>
+    <div class="duty-title">Keybound Brawler · MOCK SCENE</div>
+    <div class="mockup-banner">Mock-up</div>
+    <div class="scene-label">Settings window — Fill prompts, delay, target priority, live status</div>
+
+    <div class="dalamud-window">
+      <div class="dalamud-title">Keybound Assist</div>
+      <div class="dalamud-body">
+        <label class="row">
+          <input type="checkbox" class="checkbox" checked disabled />
+          Fill prompts for me
+        </label>
+
+        <div class="slider-row">
+          <div class="label">Delay per character (ms)</div>
+          <div class="slider-track">
+            <input type="range" min="0" max="300" value="40" disabled />
+            <span class="slider-value">40</span>
+          </div>
+        </div>
+
+        <div class="combo-row">
+          <div class="label">Target</div>
+          <select disabled>
+            <option selected>Shortest prompt</option>
+            <option>Nearest enemy</option>
+          </select>
+        </div>
+
+        <div class="separator"></div>
+        <p class="help-text">
+          The plugin types the word and stops. Press Enter yourself to submit it, and the next prompt is filled once the field is empty again.
+        </p>
+        <div class="separator"></div>
+        <p class="status-line">Typing 'slash'.</p>
+      </div>
+    </div>
+
+    <div class="callout" style="top: 160px; right: 80px">
+      Open with <strong>/keyboundassist</strong> or the plugin tray. Master switch, character delay (0–300 ms), and target mode live here.
+    </div>
+  </body>
+</html>

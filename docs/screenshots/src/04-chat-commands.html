@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Mock-up: Chat commands</title>
+    <link rel="stylesheet" href="common.css" />
+    <style>
+      .dalamud-window {
+        top: 48px;
+        right: 48px;
+        width: 320px;
+        opacity: 0.92;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="game-backdrop"></div>
+    <div class="duty-title">Any territory</div>
+    <div class="mockup-banner">Mock-up</div>
+    <div class="scene-label">Slash commands — on, off, status (chat + log)</div>
+
+    <div class="chat-panel">
+      <div class="chat-line echo">&gt; /keyboundassist status</div>
+      <div class="chat-line plugin">[Keybound Assist] Not in Keybound Brawler.</div>
+      <div class="chat-line echo">&gt; /keyboundassist off</div>
+      <div class="chat-line echo">&gt; /keyboundassist status</div>
+      <div class="chat-line plugin">[Keybound Assist] Assist is off.</div>
+      <div class="chat-line echo">&gt; /keyboundassist on</div>
+      <div class="chat-line echo">&gt; /keyboundassist status</div>
+      <div class="chat-line plugin">[Keybound Assist] Waiting for the Keybound Brawler input.</div>
+      <div class="chat-line echo">&gt; /keyboundassist help</div>
+      <div class="chat-line plugin">[Keybound Assist] Usage: /keyboundassist [on|off|status]</div>
+    </div>
+    <div class="chat-input-hint">Illustrative chat lines — not a real client log</div>
+
+    <div class="dalamud-window">
+      <div class="dalamud-title">Keybound Assist</div>
+      <div class="dalamud-body">
+        <label class="row">
+          <input type="checkbox" class="checkbox" disabled />
+          Fill prompts for me
+        </label>
+        <div class="separator"></div>
+        <p class="status-line">Assist is off.</p>
+      </div>
+    </div>
+
+    <div class="callout" style="top: 120px; left: 560px">
+      <strong>/keyboundassist</strong> toggles this window.<br />
+      <strong>on</strong> / <strong>off</strong> toggle filling.<br />
+      <strong>status</strong> mirrors the window status line to chat and the plugin log.
+    </div>
+  </body>
+</html>

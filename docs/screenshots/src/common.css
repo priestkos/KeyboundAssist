@@ -1,0 +1,306 @@
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html,
+body {
+  width: 1280px;
+  height: 720px;
+  overflow: hidden;
+  font-family: "Segoe UI", system-ui, sans-serif;
+  background: #0a0c10;
+  color: #e8e8e8;
+}
+
+.mockup-banner {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  z-index: 9999;
+  padding: 6px 14px;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: #1a1200;
+  background: linear-gradient(135deg, #f5c842, #e8a020);
+  border: 2px solid #fff3;
+  border-radius: 4px;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.5);
+}
+
+.scene-label {
+  position: absolute;
+  bottom: 12px;
+  left: 12px;
+  z-index: 9998;
+  padding: 4px 10px;
+  font-size: 11px;
+  color: #aaa;
+  background: rgba(0, 0, 0, 0.65);
+  border-radius: 3px;
+}
+
+/* FFXIV-ish game backdrop (abstract, not a real capture) */
+.game-backdrop {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(ellipse 80% 60% at 50% 40%, #2a3548 0%, transparent 70%),
+    linear-gradient(180deg, #1a2230 0%, #0d1218 55%, #15100a 100%);
+}
+
+.game-backdrop::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent 2px,
+    rgba(0, 0, 0, 0.03) 2px,
+    rgba(0, 0, 0, 0.03) 4px
+  );
+  pointer-events: none;
+}
+
+/* Dalamud / ImGui window */
+.dalamud-window {
+  position: absolute;
+  min-width: 380px;
+  background: rgba(24, 24, 28, 0.96);
+  border: 1px solid #404048;
+  border-radius: 4px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6);
+}
+
+.dalamud-title {
+  padding: 8px 12px;
+  font-size: 14px;
+  font-weight: 600;
+  background: linear-gradient(180deg, #3d5a80 0%, #2d4560 100%);
+  border-bottom: 1px solid #1a2838;
+  border-radius: 4px 4px 0 0;
+}
+
+.dalamud-body {
+  padding: 14px 16px 16px;
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.dalamud-body label.row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.checkbox {
+  width: 16px;
+  height: 16px;
+  accent-color: #5a9fd4;
+}
+
+.slider-row {
+  margin-bottom: 14px;
+}
+
+.slider-row .label {
+  margin-bottom: 6px;
+  color: #ccc;
+}
+
+.slider-track {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+input[type="range"] {
+  flex: 1;
+  max-width: 160px;
+  accent-color: #5a9fd4;
+}
+
+.slider-value {
+  font-variant-numeric: tabular-nums;
+  color: #8ec8ff;
+  min-width: 36px;
+}
+
+.combo-row {
+  margin-bottom: 14px;
+}
+
+.combo-row select {
+  margin-top: 6px;
+  width: 160px;
+  padding: 4px 8px;
+  font-size: 13px;
+  color: #eee;
+  background: #2a2a32;
+  border: 1px solid #555;
+  border-radius: 3px;
+}
+
+.separator {
+  height: 1px;
+  background: #444;
+  margin: 12px 0;
+}
+
+.help-text {
+  color: #aaa;
+  font-size: 12px;
+  margin-bottom: 10px;
+}
+
+.status-line {
+  color: #7dd87d;
+  font-size: 12px;
+  font-family: ui-monospace, monospace;
+}
+
+/* Duty UI mock elements */
+.duty-hud {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.input-bar {
+  position: absolute;
+  bottom: 120px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 420px;
+  padding: 10px 14px;
+  background: rgba(0, 0, 0, 0.75);
+  border: 2px solid #c9a227;
+  border-radius: 6px;
+  font-size: 22px;
+  letter-spacing: 0.08em;
+  text-align: center;
+  color: #fff;
+  box-shadow: 0 0 24px rgba(201, 162, 39, 0.25);
+}
+
+.input-bar .cursor {
+  display: inline-block;
+  width: 2px;
+  height: 1em;
+  background: #fff;
+  vertical-align: text-bottom;
+  animation: blink 1s step-end infinite;
+}
+
+@keyframes blink {
+  50% {
+    opacity: 0;
+  }
+}
+
+.enemy-prompt {
+  position: absolute;
+  padding: 6px 12px;
+  font-size: 15px;
+  font-weight: 600;
+  color: #fff;
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.9);
+  background: rgba(40, 20, 60, 0.85);
+  border: 1px solid #8060a0;
+  border-radius: 4px;
+}
+
+.enemy-prompt.nearest {
+  border-color: #5a9fd4;
+  box-shadow: 0 0 12px rgba(90, 159, 212, 0.4);
+}
+
+.enemy-prompt.shortest {
+  border-color: #7dd87d;
+}
+
+.static-tiles {
+  display: inline-flex;
+  gap: 2px;
+  vertical-align: middle;
+  margin-right: 6px;
+}
+
+.static-tile {
+  width: 10px;
+  height: 14px;
+  background: repeating-linear-gradient(
+    45deg,
+    #888,
+    #888 2px,
+    #444 2px,
+    #444 4px
+  );
+  border: 1px solid #aaa;
+}
+
+.duty-title {
+  position: absolute;
+  top: 48px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 14px;
+  color: #c9a227;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  opacity: 0.85;
+}
+
+/* Chat log */
+.chat-panel {
+  position: absolute;
+  bottom: 24px;
+  left: 24px;
+  width: 520px;
+  max-height: 220px;
+  padding: 8px 0;
+  font-size: 13px;
+  line-height: 1.5;
+  text-shadow: 0 1px 2px #000;
+}
+
+.chat-line {
+  margin-bottom: 4px;
+  padding: 2px 0;
+}
+
+.chat-line.system {
+  color: #e8c868;
+}
+
+.chat-line.echo {
+  color: #b8b8b8;
+}
+
+.chat-line.plugin {
+  color: #7dd87d;
+}
+
+.chat-input-hint {
+  position: absolute;
+  bottom: 4px;
+  left: 24px;
+  font-size: 11px;
+  color: #666;
+}
+
+.callout {
+  position: absolute;
+  padding: 8px 12px;
+  font-size: 11px;
+  color: #ccc;
+  background: rgba(0, 0, 0, 0.7);
+  border-left: 3px solid #5a9fd4;
+  border-radius: 0 4px 4px 0;
+  max-width: 240px;
+}
