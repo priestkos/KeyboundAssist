@@ -16,16 +16,12 @@ These images are **mock-ups** (HTML rendered to PNG). They are not real in-game 
 | ![Chat commands mock-up](docs/screenshots/04-chat-commands.png) | **Commands** — `/keyboundassist status` output in chat, `on`/`off` toggles (no chat echo), and usage text for unknown args. |
 | ![Press Enter mock-up](docs/screenshots/05-press-enter.png) | **Ready to submit** — full word in the field; status `'…' is typed. Press Enter.` (plugin does not submit). |
 
-Sources: `docs/screenshots/src/` (re-render with `npm install` and `node render-screenshots.mjs` in that folder).
-
 ## Mock-up video
 
 A short **mock-up** walkthrough (not real gameplay) cross-fades through the same scenes with on-screen captions. The gold **Mock-up** label stays visible for the whole clip.
 
 - [mockup-walkthrough.mp4](docs/videos/mockup-walkthrough.mp4) (H.264, 1280×720, ~21 s)
 - [mockup-walkthrough.gif](docs/videos/mockup-walkthrough.gif) (preview)
-
-Re-render: `npm install` and `node render-video.mjs` in `docs/videos/src/`.
 
 ## What it does
 
