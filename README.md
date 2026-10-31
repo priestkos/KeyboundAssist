@@ -18,6 +18,15 @@ These images are **mock-ups** (HTML rendered to PNG). They are not real in-game 
 
 Sources: `docs/screenshots/src/` (re-render with `npm install` and `node render-screenshots.mjs` in that folder).
 
+## Mock-up video
+
+A short **mock-up** walkthrough (not real gameplay) cross-fades through the same scenes with on-screen captions. The gold **Mock-up** label stays visible for the whole clip.
+
+- [mockup-walkthrough.mp4](docs/videos/mockup-walkthrough.mp4) (H.264, 1280×720, ~21 s)
+- [mockup-walkthrough.gif](docs/videos/mockup-walkthrough.gif) (preview)
+
+Re-render: `npm install` and `node render-video.mjs` in `docs/videos/src/`.
+
 ## What it does
 
 - **Types the prompt for you** — the chosen enemy prompt is written into the duty's own text field one character at a time, the plugin then stops and leaves the word sitting there for your Enter.

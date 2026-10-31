@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Keybound Assist mock-up walkthrough</title>
+    <link rel="stylesheet" href="../../screenshots/src/common.css" />
+    <style>
+      body {
+        position: relative;
+      }
+
+      .scene {
+        position: absolute;
+        inset: 0;
+        opacity: 0;
+        transition: opacity 0.6s ease;
+        pointer-events: none;
+      }
+
+      .scene.active {
+        opacity: 1;
+      }
+
+      .video-caption {
+        position: absolute;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        z-index: 9000;
+        padding: 14px 20px;
+        font-size: 15px;
+        font-weight: 600;
+        text-align: center;
+        color: #fff;
+        background: linear-gradient(0deg, rgba(0, 0, 0, 0.88) 0%, rgba(0, 0, 0, 0.5) 70%, transparent 100%);
+        text-shadow: 0 1px 4px #000;
+      }
+
+      .mockup-banner {
+        font-size: 14px;
+        padding: 8px 16px;
+      }
+
+      /* Scene-specific layout (mirrors screenshot HTML) */
+      .s1 .win { top: 140px; left: 80px; }
+      .s2 .win { top: 48px; right: 48px; width: 340px; }
+      .s2 .ep1 { top: 220px; left: 180px; }
+      .s2 .ep2 { top: 280px; left: 520px; }
+      .s2 .ep3 { top: 340px; left: 860px; }
+      .s3 .win { top: 48px; left: 48px; width: 360px; }
+      .s3 .ep-near { top: 300px; left: 640px; }
+      .s3 .ep-far { top: 260px; left: 320px; opacity: 0.75; }
+      .s3 .ep-veiled { top: 380px; left: 480px; }
+      .s4 .win { top: 48px; right: 48px; width: 320px; opacity: 0.92; }
+      .s5 .win { bottom: 48px; right: 48px; width: 360px; }
+      .s5 .enter-hint {
+        position: absolute;
+        bottom: 188px;
+        left: 50%;
+        transform: translateX(-50%);
+        font-size: 13px;
+        color: #c9a227;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="mockup-banner">Mock-up</div>
+
+    <div id="scene1" class="scene s1">
+      <div class="game-backdrop"></div>
+      <div class="duty-title">Keybound Brawler · MOCK SCENE</div>
+      <div class="dalamud-window win">
+        <div class="dalamud-title">Keybound Assist</div>
+        <div class="dalamud-body">
+          <label class="row">
+            <input type="checkbox" class="checkbox" checked disabled />
+            Fill prompts for me
+          </label>
+          <div class="slider-row">
+            <div class="label">Delay per character (ms)</div>
+            <div class="slider-track">
+              <input type="range" min="0" max="300" value="40" disabled />
+              <span class="slider-value">40</span>
+            </div>
+          </div>
+          <div class="combo-row">
+            <div class="label">Target</div>
+            <select disabled><option selected>Shortest prompt</option></select>
+          </div>
+          <div class="separator"></div>
+          <p class="help-text">The plugin types the word and stops. Press Enter yourself to submit it.</p>
+          <div class="separator"></div>
+          <p class="status-line" id="s1-status">Typing 'slash'.</p>
+        </div>
+      </div>
+    </div>
+
+    <div id="scene2" class="scene s2">
+      <div class="game-backdrop"></div>
+      <div class="duty-title">Keybound Brawler · Territory 1359</div>
+      <div class="duty-hud">
+        <div class="enemy-prompt ep1 shortest">bolt</div>
+        <div class="enemy-prompt ep2">thunderclap</div>
+        <div class="enemy-prompt ep3">meteor</div>
+        <div class="input-bar" id="s2-input">b</div>
+      </div>
+      <div class="dalamud-window win">
+        <div class="dalamud-title">Keybound Assist</div>
+        <div class="dalamud-body">
+          <p class="status-line" id="s2-status">Typing 'bolt'.</p>
+        </div>
+      </div>
+    </div>
+
+    <div id="scene3" class="scene s3">
+      <div class="game-backdrop"></div>
+      <div class="duty-title">Keybound Brawler</div>
+      <div class="duty-hud">
+        <div class="enemy-prompt ep-far">guardian</div>
+        <div class="enemy-prompt ep-near nearest">strike</div>
+        <div class="enemy-prompt ep-veiled">
+          <span class="static-tiles">
+            <span class="static-tile"></span><span class="static-tile"></span><span class="static-tile"></span>
+          </span>
+          <span style="opacity: 0.35">veil</span>
+        </div>
+        <div class="input-bar" id="s3-input">st</div>
+      </div>
+      <div class="dalamud-window win">
+        <div class="dalamud-title">Keybound Assist</div>
+        <div class="dalamud-body">
+          <div class="combo-row">
+            <div class="label">Target</div>
+            <select disabled><option selected>Nearest enemy</option></select>
+          </div>
+          <p class="status-line">Typing 'strike'.</p>
+        </div>
+      </div>
+    </div>
+
+    <div id="scene4" class="scene s4">
+      <div class="game-backdrop"></div>
+      <div class="duty-title">Any territory</div>
+      <div class="chat-panel">
+        <div class="chat-line echo">&gt; /keyboundassist status</div>
+        <div class="chat-line plugin">[Keybound Assist] Not in Keybound Brawler.</div>
+        <div class="chat-line echo">&gt; /keyboundassist status</div>
+        <div class="chat-line plugin">[Keybound Assist] Assist is off.</div>
+        <div class="chat-line plugin">[Keybound Assist] Usage: /keyboundassist [on|off|status]</div>
+      </div>
+      <div class="dalamud-window win">
+        <div class="dalamud-title">Keybound Assist</div>
+        <div class="dalamud-body">
+          <p class="status-line">Assist is off.</p>
+        </div>
+      </div>
+    </div>
+
+    <div id="scene5" class="scene s5">
+      <div class="game-backdrop"></div>
+      <div class="duty-title">Keybound Brawler</div>
+      <div class="duty-hud">
+        <div class="enemy-prompt" style="top: 280px; left: 520px">slash</div>
+        <div class="input-bar">slash</div>
+        <div class="enter-hint">Press Enter to submit (player only)</div>
+      </div>
+      <div class="dalamud-window win">
+        <div class="dalamud-title">Keybound Assist</div>
+        <div class="dalamud-body">
+          <p class="status-line">'slash' is typed. Press Enter.</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="video-caption" id="caption">Keybound Assist — mock-up walkthrough</div>
+
+    <script>
+      const scenes = [
+        { id: "scene1", start: 0, end: 4.2, caption: "Settings window — Fill prompts, delay, target, status" },
+        { id: "scene2", start: 3.6, end: 8.4, caption: "In-duty typing — one character at a time into KTGInput" },
+        { id: "scene3", start: 7.8, end: 12.6, caption: "Cryptic Communications read + Nearest enemy targeting" },
+        { id: "scene4", start: 12.0, end: 16.8, caption: "Commands — /keyboundassist status and usage in chat" },
+        { id: "scene5", start: 16.2, end: 21.0, caption: "Word complete — plugin stops; you press Enter" },
+      ];
+
+      const boltChars = "bolt";
+      const strikeChars = "strike";
+
+      function fadeWeight(t, start, end) {
+        const fade = 0.6;
+        if (t < start) return 0;
+        if (t > end) return 0;
+        if (t < start + fade) return (t - start) / fade;
+        if (t > end - fade) return (end - t) / fade;
+        return 1;
+      }
+
+      window.seekWalkthrough = function (t) {
+        for (const s of scenes) {
+          const el = document.getElementById(s.id);
+          const w = fadeWeight(t, s.start, s.end);
+          el.style.opacity = String(w);
+          el.classList.toggle("active", w > 0.01);
+        }
+
+        let cap = "Keybound Assist — mock-up walkthrough";
+        for (const s of scenes) {
+          if (t >= s.start && t <= s.end) cap = s.caption;
+        }
+        document.getElementById("caption").textContent = cap;
+
+        if (t >= 3.6 && t <= 8.4) {
+          const local = t - 4.0;
+          const n = Math.min(boltChars.length, Math.max(0, Math.floor(local * 2.5)));
+          const text = boltChars.slice(0, n);
+          document.getElementById("s2-input").innerHTML =
+            text + (n < boltChars.length ? '<span class="cursor"></span>' : "");
+        }
+
+        if (t >= 7.8 && t <= 12.6) {
+          const local = t - 8.2;
+          const n = Math.min(strikeChars.length, Math.max(2, Math.floor(local * 2.2)));
+          document.getElementById("s3-input").textContent = strikeChars.slice(0, n);
+        }
+      };
+
+      seekWalkthrough(0);
+    </script>
+  </body>
+</html>
