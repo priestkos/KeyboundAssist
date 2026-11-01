@@ -82,6 +82,8 @@ dotnet build KeyboundAssist.csproj -c Debug      # load bin/Debug/KeyboundAssist
 dotnet build KeyboundAssist.csproj -c Release    # zip in bin/Release/KeyboundAssist/latest.zip
 ```
 
+Pushes to `main` that change the plugin (not docs-only paths) cut a GitHub release automatically; the version is the next four-part number above the latest release tag (or the csproj version when that is higher).
+
 ## Install (dev plugin)
 
 1. `/xlsettings` → Experimental → Dev Plugin Locations → add `bin\Debug\KeyboundAssist.dll`.
