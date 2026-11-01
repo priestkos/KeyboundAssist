@@ -2,15 +2,30 @@ name: Release
 
 on:
   push:
+    branches:
+      - main
     tags:
       - 'v*'
+    paths-ignore:
+      - '**.md'
+      - 'docs/**'
+      - 'images/**'
+      - 'screenshots/**'
+      - '*.png'
+      - '*.mp4'
+      - '.github/workflows/build.yml'
   workflow_dispatch:
+
+concurrency:
+  group: release-${{ github.workflow }}
+  cancel-in-progress: false
 
 permissions:
   contents: write
 
 jobs:
   release:
+    if: github.event_name != 'pull_request'
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v7
@@ -27,10 +42,105 @@ jobs:
           Invoke-WebRequest -UseBasicParsing -Uri 'https://goatcorp.github.io/dalamud-distrib/latest.zip' -OutFile dalamud.zip
           Expand-Archive -Path dalamud.zip -DestinationPath $dest -Force
 
+      - name: Resolve automatic release version
+        id: auto_release
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          function Get-FourPartVersion([string]$v) {
+            $parts = @($v -split '\.')
+            while ($parts.Count -lt 4) { $parts += '0' }
+            return ($parts[0..3] -join '.')
+          }
+
+          function Compare-Version([string]$a, [string]$b) {
+            $pa = (Get-FourPartVersion $a) -split '\.' | ForEach-Object { [int]$_ }
+            $pb = (Get-FourPartVersion $b) -split '\.' | ForEach-Object { [int]$_ }
+            for ($i = 0; $i -lt 4; $i++) {
+              if ($pa[$i] -gt $pb[$i]) { return 1 }
+              if ($pa[$i] -lt $pb[$i]) { return -1 }
+            }
+            return 0
+          }
+
+          function Get-TagCommitSha([string]$tagName) {
+            $ref = gh api "/repos/$env:GITHUB_REPOSITORY/git/ref/tags/$tagName" 2>$null | ConvertFrom-Json
+            if (-not $ref) { return $null }
+            $sha = $ref.object.sha
+            if ($ref.object.type -eq 'tag') {
+              $annotated = gh api "/repos/$env:GITHUB_REPOSITORY/git/tags/$sha" | ConvertFrom-Json
+              $sha = $annotated.object.sha
+            }
+            return $sha
+          }
+
+          [xml]$csproj = Get-Content KeyboundAssist.csproj
+          $csprojVersion = Get-FourPartVersion ([string]$csproj.Project.PropertyGroup.Version)
+
+          $latestTag = gh release list --limit 1 --json tagName --jq '.[0].tagName' 2>$null
+          if ([string]::IsNullOrWhiteSpace($latestTag)) {
+            $nextVersion = $csprojVersion
+          } else {
+            $latestVersion = Get-FourPartVersion ($latestTag -replace '^v', '')
+            if ((Compare-Version $csprojVersion $latestVersion) -gt 0) {
+              $nextVersion = $csprojVersion
+            } else {
+              $parts = (Get-FourPartVersion $latestVersion) -split '\.'
+              $parts[3] = [string]([int]$parts[3] + 1)
+              $nextVersion = ($parts -join '.')
+            }
+          }
+
+          Write-Host "Computed next version: $nextVersion"
+
+          $releases = gh api "/repos/$env:GITHUB_REPOSITORY/releases?per_page=100" | ConvertFrom-Json
+          foreach ($release in $releases) {
+            $tagSha = Get-TagCommitSha $release.tag_name
+            if ($tagSha -eq $env:GITHUB_SHA) {
+              Write-Host "Commit $env:GITHUB_SHA already has release $($release.tag_name); skipping."
+              "skip=true" >> $env:GITHUB_OUTPUT
+              exit 0
+            }
+          }
+
+          $nextTag = "v$nextVersion"
+          gh release view $nextTag *> $null
+          if ($LASTEXITCODE -eq 0) {
+            Write-Host "Release $nextTag already exists; skipping."
+            "skip=true" >> $env:GITHUB_OUTPUT
+            exit 0
+          }
+
+          gh api "/repos/$env:GITHUB_REPOSITORY/git/ref/tags/$nextTag" *> $null
+          if ($LASTEXITCODE -eq 0) {
+            Write-Host "Tag $nextTag already exists; skipping."
+            "skip=true" >> $env:GITHUB_OUTPUT
+            exit 0
+          }
+
+          "skip=false" >> $env:GITHUB_OUTPUT
+          "version=$nextVersion" >> $env:GITHUB_OUTPUT
+
       - name: Build KeyboundAssist
-        run: dotnet build KeyboundAssist.csproj -c Release
+        if: steps.auto_release.outputs.skip != 'true'
+        shell: pwsh
+        run: |
+          $version = '${{ steps.auto_release.outputs.version }}'
+          $props = @('-c', 'Release')
+          if (-not [string]::IsNullOrWhiteSpace($version)) {
+            $props += @(
+              "-p:Version=$version",
+              "-p:AssemblyVersion=$version",
+              "-p:FileVersion=$version"
+            )
+          }
+          dotnet build KeyboundAssist.csproj @props
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
       - name: Publish GitHub release
+        if: steps.auto_release.outputs.skip != 'true'
         shell: pwsh
         env:
           GH_TOKEN: ${{ github.token }}
@@ -57,6 +167,16 @@ jobs:
 
           $version = [string]$manifest.AssemblyVersion
           if ([string]::IsNullOrWhiteSpace($version)) { throw 'AssemblyVersion missing from plugin manifest' }
+
+          $autoVersion = '${{ steps.auto_release.outputs.version }}'
+          if ($env:GITHUB_EVENT_NAME -eq 'push' -and $env:GITHUB_REF -eq 'refs/heads/main') {
+            if ($version -ne $autoVersion) {
+              throw "Manifest AssemblyVersion $version does not match computed version $autoVersion"
+            }
+            $tag = "v$autoVersion"
+            gh release create $tag $zip.FullName --target $env:GITHUB_SHA --title $tag --generate-notes
+            exit 0
+          }
 
           if ($env:GITHUB_EVENT_NAME -eq 'push') {
             $tag = $env:GITHUB_REF -replace '^refs/tags/', ''
