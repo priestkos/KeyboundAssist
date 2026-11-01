@@ -40,11 +40,13 @@ internal static class TypingPlan
 
     // A fresh draw per character, so the typing has no fixed cadence. Equal bounds mean a fixed
     // delay; a hand-edited config with min > max is swapped rather than throwing out of Random.Next.
+    internal const int MaxDelayMs = 1000;
+
     internal static int DrawDelay(Random random, int minMs, int maxMs)
     {
         if (minMs > maxMs) (minMs, maxMs) = (maxMs, minMs);
-        minMs = Math.Clamp(minMs, 0, 300);
-        maxMs = Math.Clamp(maxMs, minMs, 300);
+        minMs = Math.Clamp(minMs, 0, MaxDelayMs);
+        maxMs = Math.Clamp(maxMs, minMs, MaxDelayMs);
         return random.Next(minMs, maxMs + 1);
     }
 

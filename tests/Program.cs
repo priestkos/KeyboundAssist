@@ -108,6 +108,8 @@ Check("delay-varies", draws.Distinct().Count() > 1, $"distinct={draws.Distinct()
 Check("delay-fixed-when-equal", TypingPlan.DrawDelay(rng, 40, 40) == 40, "expected 40");
 Check("delay-swapped-bounds", TypingPlan.DrawDelay(rng, 60, 30) is >= 30 and <= 60, "expected 30..60");
 Check("delay-clamps-out-of-range", TypingPlan.DrawDelay(rng, -20, 10) is >= 0 and <= 10, "expected 0..10");
+Check("delay-allows-the-cap", TypingPlan.DrawDelay(rng, 900, 1500) is >= 900 and <= 1000, "expected 900..1000");
+Check("delay-at-cap-is-fixed", TypingPlan.DrawDelay(rng, 1000, 1000) == 1000, "expected 1000");
 
 Console.WriteLine($"{checks - failures}/{checks} checks passed.");
 return failures == 0 ? 0 : 1;

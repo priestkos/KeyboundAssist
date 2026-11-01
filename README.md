@@ -12,7 +12,7 @@ These images are **mock-ups** (HTML rendered to PNG). They are not real in-game 
 
 | | |
 | --- | --- |
-| ![Config window mock-up](docs/screenshots/01-config-window.png) | **Settings window** — master switch, delay slider (0–300 ms), target combo (shortest / nearest), help text, and live status line. |
+| ![Config window mock-up](docs/screenshots/01-config-window.png) | **Settings window** — master switch, delay range (0–1000 ms), target combo (shortest / nearest), help text, and live status line. |
 | ![In-duty typing mock-up](docs/screenshots/02-duty-typing.png) | **Prompt fill** — enemy prompt labels and the duty input field with partial typing; status shows the active target word. |
 | ![Cryptic & nearest mock-up](docs/screenshots/03-cryptic-nearest.png) | **Cryptic Communications & nearest target** — static tiles over a veiled label, nearest-enemy targeting, typing in progress. |
 | ![Chat commands mock-up](docs/screenshots/04-chat-commands.png) | **Commands** — `/keyboundassist status` output in chat, `on`/`off` toggles (no chat echo), and usage text for unknown args. |
@@ -67,7 +67,7 @@ Each frame the plugin reads the field, picks the next step, and writes at most o
 ## Settings
 
 - **Fill prompts for me** — the master switch; it is on when the plugin first loads.
-- **Delay per character** — a range in milliseconds, default **30–60**. Every character draws a fresh delay inside that range, so the typing has no fixed cadence; set both ends to the same value for a fixed delay. 0 is one character per frame. The duty scores per submitted word, so the delay only exists to keep the field readable.
+- **Delay per character** — a range in milliseconds, 0–1000, default **30–60**. Every character draws a fresh delay inside that range, so the typing has no fixed cadence; set both ends to the same value for a fixed delay. 0 is one character per frame. The duty scores per submitted word, so the delay only exists to keep the field readable.
 - **Target** — `Shortest prompt` or `Nearest enemy`. A prompt with no resolvable enemy always sorts last in nearest mode.
 
 The plugin does not persist anything else. It is only active inside the duty.
@@ -90,10 +90,10 @@ dotnet build KeyboundAssist.csproj -c Release    # zip in bin/Release/KeyboundAs
 
 ## Tests
 
-The decision logic (`TypingPlan.cs`) and the label-to-enemy mapping (`PromptMap.cs`) carry no Dalamud or native dependency, so the harness compiles the same files into a console project and drives them with no game running: shortest-prompt choice, nearest-enemy ordering, prefix continuation, case and accent handling, text the plugin did not type, a prompt that vanishes mid-word, the typing lock, ambiguous and contested label-to-enemy matches, the saturated scale estimate, and the per-character delay draw (in range, varying, fixed when the ends are equal, swapped and out-of-range bounds tolerated).
+The decision logic (`TypingPlan.cs`) and the label-to-enemy mapping (`PromptMap.cs`) carry no Dalamud or native dependency, so the harness compiles the same files into a console project and drives them with no game running: shortest-prompt choice, nearest-enemy ordering, prefix continuation, case and accent handling, text the plugin did not type, a prompt that vanishes mid-word, the typing lock, ambiguous and contested label-to-enemy matches, the saturated scale estimate, and the per-character delay draw (in range, varying, fixed when the ends are equal, swapped and out-of-range bounds tolerated, the 1000 ms cap both allowed and fixed).
 
 ```
-dotnet run --project tests/KeyboundAssist.Tests.csproj -c Release    # 26 checks
+dotnet run --project tests/KeyboundAssist.Tests.csproj -c Release    # 28 checks
 ```
 
 ## Limits

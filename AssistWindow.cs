@@ -17,7 +17,7 @@ internal sealed class AssistWindow(Configuration configuration, Action save, Fun
         var delayMin = configuration.CharDelayMinMs;
         var delayMax = configuration.CharDelayMaxMs;
         ImGui.SetNextItemWidth(200f);
-        if (ImGui.DragIntRange2("Delay per character (ms)", ref delayMin, ref delayMax, 1f, 0, 300))
+        if (ImGui.DragIntRange2("Delay per character (ms)", ref delayMin, ref delayMax, 1f, 0, TypingPlan.MaxDelayMs))
         {
             configuration.CharDelayMinMs = delayMin;
             configuration.CharDelayMaxMs = delayMax;

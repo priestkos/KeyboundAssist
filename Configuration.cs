@@ -19,8 +19,8 @@ internal sealed class Configuration : IPluginConfiguration
     {
         // Equal bounds are a legal choice (fixed delay); a hand-edited file may hold min > max.
         if (CharDelayMinMs > CharDelayMaxMs) (CharDelayMinMs, CharDelayMaxMs) = (CharDelayMaxMs, CharDelayMinMs);
-        CharDelayMinMs = Math.Clamp(CharDelayMinMs, 0, 300);
-        CharDelayMaxMs = Math.Clamp(CharDelayMaxMs, CharDelayMinMs, 300);
+        CharDelayMinMs = Math.Clamp(CharDelayMinMs, 0, TypingPlan.MaxDelayMs);
+        CharDelayMaxMs = Math.Clamp(CharDelayMaxMs, CharDelayMinMs, TypingPlan.MaxDelayMs);
         if (!Enum.IsDefined(Priority)) Priority = TargetPriority.ShortestPrompt;
     }
 }
