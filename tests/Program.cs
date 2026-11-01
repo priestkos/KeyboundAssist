@@ -100,5 +100,14 @@ Check("estimate-live", PromptMap.EstimateDistance(1.50f) is { } e && Math.Abs(e 
     PromptMap.EstimateDistance(1.50f)?.ToString() ?? "null");
 Check("estimate-saturated", PromptMap.EstimateDistance(1.10f) == null, "expected null");
 
+// Per-character delay: a fresh draw inside the range, equal ends fixed, bad bounds tolerated.
+var rng = new Random(1234);
+var draws = Enumerable.Range(0, 400).Select(_ => TypingPlan.DrawDelay(rng, 30, 60)).ToArray();
+Check("delay-in-range", draws.All(d => d is >= 30 and <= 60), $"min={draws.Min()} max={draws.Max()}");
+Check("delay-varies", draws.Distinct().Count() > 1, $"distinct={draws.Distinct().Count()}");
+Check("delay-fixed-when-equal", TypingPlan.DrawDelay(rng, 40, 40) == 40, "expected 40");
+Check("delay-swapped-bounds", TypingPlan.DrawDelay(rng, 60, 30) is >= 30 and <= 60, "expected 30..60");
+Check("delay-clamps-out-of-range", TypingPlan.DrawDelay(rng, -20, 10) is >= 0 and <= 10, "expected 0..10");
+
 Console.WriteLine($"{checks - failures}/{checks} checks passed.");
 return failures == 0 ? 0 : 1;

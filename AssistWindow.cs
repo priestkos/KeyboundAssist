@@ -14,13 +14,16 @@ internal sealed class AssistWindow(Configuration configuration, Action save, Fun
             save();
         }
 
-        var delay = configuration.CharDelayMs;
-        ImGui.SetNextItemWidth(160f);
-        if (ImGui.SliderInt("Delay per character (ms)", ref delay, 0, 300))
+        var delayMin = configuration.CharDelayMinMs;
+        var delayMax = configuration.CharDelayMaxMs;
+        ImGui.SetNextItemWidth(200f);
+        if (ImGui.DragIntRange2("Delay per character (ms)", ref delayMin, ref delayMax, 1f, 0, 300))
         {
-            configuration.CharDelayMs = delay;
+            configuration.CharDelayMinMs = delayMin;
+            configuration.CharDelayMaxMs = delayMax;
             save();
         }
+        ImGui.TextDisabled("Each character draws a new delay in this range. Equal ends = fixed.");
 
         var priority = (int)configuration.Priority;
         ImGui.SetNextItemWidth(160f);

@@ -156,7 +156,7 @@ public sealed class Plugin : IDalamudPlugin
 
         var writeAt = Environment.TickCount64;
         if (writeAt < nextWriteAt) return;
-        nextWriteAt = writeAt + configuration.CharDelayMs;
+        nextWriteAt = writeAt + TypingPlan.DrawDelay(Random.Shared, configuration.CharDelayMinMs, configuration.CharDelayMaxMs);
         input->SetText(read.Value.Field + step.Next);
     }
 }

@@ -38,6 +38,16 @@ internal static class TypingPlan
             : matches.OrderBy(p => p.Text.Length).ThenBy(p => p.NodeId).First();
     }
 
+    // A fresh draw per character, so the typing has no fixed cadence. Equal bounds mean a fixed
+    // delay; a hand-edited config with min > max is swapped rather than throwing out of Random.Next.
+    internal static int DrawDelay(Random random, int minMs, int maxMs)
+    {
+        if (minMs > maxMs) (minMs, maxMs) = (maxMs, minMs);
+        minMs = Math.Clamp(minMs, 0, 300);
+        maxMs = Math.Clamp(maxMs, minMs, 300);
+        return random.Next(minMs, maxMs + 1);
+    }
+
     // The field is the authority on what has been typed: the plugin only ever appends the next
     // character, and never deletes or overwrites what the player put there.
     internal static Step Next(string field, IReadOnlyList<Prompt> prompts, TargetPriority priority,

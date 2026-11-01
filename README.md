@@ -67,7 +67,7 @@ Each frame the plugin reads the field, picks the next step, and writes at most o
 ## Settings
 
 - **Fill prompts for me** — the master switch; it is on when the plugin first loads.
-- **Delay per character** — 0–300 ms between characters, default 40 ms. The duty scores per submitted word, so the delay is only there to keep the field readable; 0 is one character per frame.
+- **Delay per character** — a range in milliseconds, default **30–60**. Every character draws a fresh delay inside that range, so the typing has no fixed cadence; set both ends to the same value for a fixed delay. 0 is one character per frame. The duty scores per submitted word, so the delay only exists to keep the field readable.
 - **Target** — `Shortest prompt` or `Nearest enemy`. A prompt with no resolvable enemy always sorts last in nearest mode.
 
 The plugin does not persist anything else. It is only active inside the duty.
@@ -90,10 +90,10 @@ dotnet build KeyboundAssist.csproj -c Release    # zip in bin/Release/KeyboundAs
 
 ## Tests
 
-The decision logic (`TypingPlan.cs`) and the label-to-enemy mapping (`PromptMap.cs`) carry no Dalamud or native dependency, so the harness compiles the same files into a console project and drives them with no game running: shortest-prompt choice, nearest-enemy ordering, prefix continuation, case and accent handling, text the plugin did not type, a prompt that vanishes mid-word, the typing lock, ambiguous and contested label-to-enemy matches, and the saturated scale estimate.
+The decision logic (`TypingPlan.cs`) and the label-to-enemy mapping (`PromptMap.cs`) carry no Dalamud or native dependency, so the harness compiles the same files into a console project and drives them with no game running: shortest-prompt choice, nearest-enemy ordering, prefix continuation, case and accent handling, text the plugin did not type, a prompt that vanishes mid-word, the typing lock, ambiguous and contested label-to-enemy matches, the saturated scale estimate, and the per-character delay draw (in range, varying, fixed when the ends are equal, swapped and out-of-range bounds tolerated).
 
 ```
-dotnet run --project tests/KeyboundAssist.Tests.csproj -c Release    # 21 checks
+dotnet run --project tests/KeyboundAssist.Tests.csproj -c Release    # 26 checks
 ```
 
 ## Limits
