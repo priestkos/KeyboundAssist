@@ -145,14 +145,6 @@ public sealed class Plugin : IDalamudPlugin
         // between waves, which is exactly when nothing else in this plugin is doing work.
         ActivityKeepAlive.Tick(now, configuration.KeepAlive);
 
-        // Dynamic Sensory Jammer and Cursed Gaze punish any typing for their whole cast, and the field's
-        // own lock only reports them once it has already engaged. The cast bar is the early warning.
-        if (CastBar.Blocked(GameGui, now, out var holdReason))
-        {
-            status = holdReason;
-            return;
-        }
-
         var addon = GameState.InputAddon(GameGui);
         var input = GameState.InputComponent(addon);
         var read = GameState.Read(addon, input);
@@ -162,26 +154,23 @@ public sealed class Plugin : IDalamudPlugin
             return;
         }
 
-        // A wave transition still looks like an active duty, but nobody can type during one.
-        if (Conditions[ConditionFlag.BetweenAreas] || Conditions[ConditionFlag.OccupiedInCutSceneEvent])
-        {
-            status = "Waiting - the duty is changing scenes.";
-            return;
-        }
-
-        var field = read.Value.Field;
-
         var player = Objects.LocalPlayer;
-        var prompts = GameState.Prompts(GameGui, Objects, player?.Position ?? default, player != null);
+        var context = new FrameContext(
+            // Dynamic Sensory Jammer and Cursed Gaze punish any typing for their whole cast, and the field's
+            // own lock only reports them once it has already engaged. The cast bar is the early warning.
+            CastBar.Blocked(GameGui, now, out var holdReason), holdReason,
+            Conditions[ConditionFlag.BetweenAreas] || Conditions[ConditionFlag.OccupiedInCutSceneEvent],
+            read.Value.Field, read.Value.Allowed, read.Value.Reason,
+            GameState.Prompts(GameGui, Objects, player?.Position ?? default, player != null));
 
-        // One decision, in one place, with no Dalamud in reach: the skip filter, the ownership proof, the
-        // permission gate on every mutating path, the backspace and the barrier takeover are all inside it,
-        // and tests/ drives this same function.
-        var outcome = TickPlan.Step(field, read.Value.Allowed, read.Value.Reason, prompts, state, now,
-            configuration.Priority, configuration.IgnorePunctuation);
+        var settings = new FrameSettings(configuration.Priority, configuration.IgnorePunctuation,
+            configuration.CharDelayMinMs, configuration.CharDelayMaxMs);
 
-        state = TickPlan.Apply(outcome, field, new NativeInputField(addon, input), now,
-            ref nextWriteAt, ref nextFocusAt, configuration.CharDelayMinMs, configuration.CharDelayMaxMs,
-            Random.Shared, out status);
+        // One frame, in one place: the gates, the decision (permission, ownership, backspace, barrier
+        // takeover, skip) and the write itself. tests/ drives this same entry point against a recording field.
+        var result = Frame.Run(context, settings, state, new NativeInputField(addon, input), now,
+            ref nextWriteAt, ref nextFocusAt, Random.Shared);
+        state = result.State;
+        status = result.Status;
     }
 }

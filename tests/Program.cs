@@ -329,6 +329,122 @@ TickPlan.Apply(secondTick, "", focusField, 5300, ref focusWrite, ref focusNext, 
 Check("handler-writes-after-focus", focusField.Writes.Count == 1 && focusField.Writes[0] == "b",
     string.Join(",", focusField.Writes));
 
+// ---- The gates and the whole frame, through Frame.Run: what Plugin.Tick now is without the native reads. ----
+var gates = new FrameSettings(TargetPriority.ShortestPrompt, true, 0, 0);
+
+var haltField = new FakeField();
+var haltTimers = new Timers();
+var haltResult = Frame.Run(new FrameContext(true, "Holding - Dynamic Sensory Jammer is locking input.", false,
+        "", true, "Ready.", [P("bomb")]), gates, new AssistState(null, false, null, null, 0), haltField, 5000,
+    ref haltTimers.Write, ref haltTimers.Focus, new Random(1));
+Check("gate-halt-no-write", haltField.Writes.Count == 0 && haltResult.Status.StartsWith("Holding"),
+    haltResult.Status);
+
+var sceneField = new FakeField();
+var sceneTimers = new Timers();
+var scene = Frame.Run(new FrameContext(false, "", true, "", true, "Ready.", [P("bomb")]), gates,
+    new AssistState(null, false, null, null, 0), sceneField, 5000, ref sceneTimers.Write, ref sceneTimers.Focus,
+    new Random(1));
+Check("gate-scene-no-write", sceneField.Writes.Count == 0 && scene.Status.StartsWith("Waiting - the duty"),
+    scene.Status);
+
+// ---- Audit parity: the review's twelve checks, driven through Frame.Run rather than by inspection. ----
+AssistState RunFrame(FrameContext context, AssistState previous, FakeField into, long at)
+{
+    // A fresh write clock per frame keeps each scenario independent of the one before it.
+    var timers = new Timers();
+    return Frame.Run(context, gates, previous, into, at, ref timers.Write, ref timers.Focus, new Random(1)).State;
+}
+
+// Control 1: an ordinary word is typed one character at a time.
+var normalField = new FakeField();
+RunFrame(new FrameContext(false, "", false, "", true, "Ready.", [P("bomb")]), new AssistState(null, false, null, null, 0),
+    normalField, 5000);
+Check("audit-control-normal", normalField.Writes.Count == 1 && normalField.Writes[0] == "b",
+    string.Join(",", normalField.Writes));
+
+// Control 2: no append writes while the duty prohibits typing.
+var lockedAppendField = new FakeField();
+var lockedAppendState = RunFrame(new FrameContext(false, "", false, "b", false, "Typing prohibited (3s).", [P("bomb")]),
+    new AssistState("b", true, "bomb", null, 0), lockedAppendField, 5000);
+Check("audit-control-locked", lockedAppendField.Writes.Count == 0, string.Join(",", lockedAppendField.Writes));
+
+// Control 3: deleting part of a multi-character word clears and skips it.
+var partialField = new FakeField();
+var partialState = RunFrame(new FrameContext(false, "", false, "bom", true, "Ready.", [P("bomb")]),
+    new AssistState("bomb", true, "bomb", null, 0), partialField, 5000);
+Check("audit-control-partial-delete", partialField.Writes.Count == 1 && partialField.Writes[0] == ""
+    && partialState.SkipTarget == "bomb", string.Join(",", partialField.Writes));
+
+// F1: a barrier word completes; it is never cleared by its own preemption.
+var parBarrierField = new FakeField();
+var parBarrierState = new AssistState(null, false, null, null, 0);
+var parMirror = "";
+for (var frame = 0; frame < 12; frame++)
+{
+    var at = 6000 + frame * 500;
+    var before = parBarrierField.Writes.Count;
+    parBarrierState = RunFrame(new FrameContext(false, "", false, parMirror, true, "Ready.", barrierOnly),
+        parBarrierState, parBarrierField, at);
+    if (parBarrierField.Writes.Count == before) break;
+    parMirror = parBarrierField.Writes[^1];
+}
+Check("audit-F1-barrier-completes", parMirror == "shield", parMirror);
+
+// F2: neither clear path touches the field while permission is false.
+var lockedTakeoverField = new FakeField();
+RunFrame(new FrameContext(false, "", false, "b", false, "Typing prohibited (3s).",
+        [P("bomb"), P("shield", null, 9, defense: true)]), new AssistState("b", true, "bomb", null, 0),
+    lockedTakeoverField, 5000);
+Check("audit-F2-locked-takeover", lockedTakeoverField.Writes.Count == 0, string.Join(",", lockedTakeoverField.Writes));
+
+var lockedDeleteField = new FakeField();
+RunFrame(new FrameContext(false, "", false, "bom", false, "Typing prohibited (3s).", [P("bomb")]),
+    new AssistState("bomb", true, "bomb", null, 0), lockedDeleteField, 5000);
+Check("audit-F2-locked-backspace", lockedDeleteField.Writes.Count == 0, string.Join(",", lockedDeleteField.Writes));
+
+// F3: text the player replaced is preserved even while a barrier word waits.
+var replacedFrameField = new FakeField();
+RunFrame(new FrameContext(false, "", false, "my note", true, "Ready.", [P("bomb"), P("shield", null, 9, defense: true)]),
+    new AssistState("b", true, "bomb", null, 0), replacedFrameField, 5000);
+Check("audit-F3-player-text-kept", replacedFrameField.Writes.Count == 0, string.Join(",", replacedFrameField.Writes));
+
+// F4: the first character is taken from the prepared text.
+var accentField = new FakeField();
+RunFrame(new FrameContext(false, "", false, "", true, "Ready.", [P("éclair")]),
+    new AssistState(null, false, null, null, 0), accentField, 5000);
+Check("audit-F4-accent-first", accentField.Writes.Count == 1 && accentField.Writes[0] == "e",
+    string.Join(",", accentField.Writes));
+
+var punctField = new FakeField();
+RunFrame(new FrameContext(false, "", false, "", true, "Ready.", [P("'bomb")]),
+    new AssistState(null, false, null, null, 0), punctField, 5000);
+Check("audit-F4-punct-first", punctField.Writes.Count == 1 && punctField.Writes[0] == "b",
+    string.Join(",", punctField.Writes));
+
+// F5: deleting the last owned character skips the word; a submission does not.
+var lastCharFrameField = new FakeField();
+var lastCharFrameState = RunFrame(new FrameContext(false, "", false, "", true, "Ready.", [P("x")]),
+    new AssistState("x", true, "x", null, 0), lastCharFrameField, 5000);
+Check("audit-F5-last-char-skips", lastCharFrameField.Writes.Count == 1 && lastCharFrameField.Writes[0] == ""
+    && lastCharFrameState.SkipTarget == "x", string.Join(",", lastCharFrameField.Writes));
+
+var submitFrameField = new FakeField();
+var submitFrameState = RunFrame(new FrameContext(false, "", false, "", true, "Ready.", [P("next")]),
+    new AssistState("bomb", true, "bomb", null, 0), submitFrameField, 5000);
+Check("audit-F5-submission-no-skip", submitFrameField.Writes.Count == 1 && submitFrameField.Writes[0] == "n"
+    && submitFrameState.SkipTarget == null, string.Join(",", submitFrameField.Writes));
+
+// F6: an ambiguous or contested match keeps no distance, above the scale-estimate threshold either.
+var ambiguousScaled = PromptMap.WithDistances([Pm(100, 150, 1.5f, 1)],
+    [new ActorScreen(7, new Vector2(100, 200), new Vector3(0, 0, 10)),
+     new ActorScreen(8, new Vector2(106, 200), new Vector3(0, 0, 20))], Vector3.Zero);
+var contestedScaled = PromptMap.WithDistances([Pm(100, 150, 1.5f, 1), Pm(101, 150, 1.4f, 2)],
+    [new ActorScreen(7, new Vector2(100, 200), new Vector3(0, 0, 10))], Vector3.Zero);
+Check("audit-F6-no-guessed-distance",
+    ambiguousScaled[0].Distance == null && contestedScaled[0].Distance == null && contestedScaled[1].Distance == null,
+    $"{ambiguousScaled[0].Distance}/{contestedScaled[0].Distance}/{contestedScaled[1].Distance}");
+
 Console.WriteLine($"{checks - failures}/{checks} checks passed.");
 return failures == 0 ? 0 : 1;
 
@@ -348,5 +464,11 @@ sealed class FakeField : IInputField
     }
 
     public void SetText(string text) => Writes.Add(text);
+}
+
+sealed class Timers
+{
+    public long Write;
+    public long Focus;
 }
 
