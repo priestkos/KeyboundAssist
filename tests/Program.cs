@@ -192,5 +192,75 @@ Check("owned-prefix-yes", TypingPlan.IsOwnedPrefix("b", "bomb", true), "expected
 Check("owned-prefix-no", !TypingPlan.IsOwnedPrefix("my note", "bomb", true), "expected not owned");
 Check("owned-prefix-punct", TypingPlan.IsOwnedPrefix("dont", "don't-stop!", true), "expected owned");
 
+// ---- The update loop itself, driven through the same TickPlan.Step the plugin calls every frame. ----
+
+// F1: a barrier word completes under preemption instead of being cleared on its own progress.
+var state = new AssistState(null, false, null, null, 0);
+Prompt[] barrierOnly = [P("shield", null, 5, defense: true)];
+var typedSoFar = "";
+var clears = 0;
+for (var frame = 0; frame < 12; frame++)
+{
+    var outcome = TickPlan.Step(typedSoFar, true, "Ready.", barrierOnly, state, 1000 + frame * 20,
+        TargetPriority.ShortestPrompt, true);
+    state = outcome.State;
+    if (outcome.Clear) { clears++; typedSoFar = ""; continue; }
+    if (outcome.Action != TickAction.Write) break;
+    typedSoFar += outcome.Next;                                  // the frame's write lands
+    state = state with { LastWritten = typedSoFar, WriteSeen = false };
+}
+Check("loop-barrier-completes", clears == 0 && typedSoFar == "shield", $"'{typedSoFar}', {clears} clears");
+
+// F2: nothing is cleared while the duty prohibits typing - neither the takeover nor the backspace.
+var lockedPartial = new AssistState("b", true, "bomb", null, 0);
+var locked = TickPlan.Step("b", false, "Typing prohibited (3s).",
+    [P("bomb"), P("shield", null, 9, defense: true)], lockedPartial, 5000, TargetPriority.ShortestPrompt, true);
+Check("loop-locked-takeover-no-clear", !locked.Clear && locked.Action == TickAction.None, locked.ToString());
+
+var lockedDeleted = new AssistState("bomb", true, "bomb", null, 0);
+var lockedDel = TickPlan.Step("bom", false, "Typing prohibited (3s).", [P("bomb")], lockedDeleted, 5000,
+    TargetPriority.ShortestPrompt, true);
+Check("loop-locked-backspace-no-clear", !lockedDel.Clear && lockedDel.Action == TickAction.None,
+    lockedDel.ToString());
+
+// F3: text the player put there is never cleared, even when a barrier word is waiting.
+var replaced = new AssistState("b", true, "bomb", null, 0);
+var kept = TickPlan.Step("my note", true, "Ready.", [P("bomb"), P("shield", null, 9, defense: true)],
+    replaced, 5000, TargetPriority.ShortestPrompt, true);
+Check("loop-player-text-kept", !kept.Clear && kept.Action != TickAction.Write, kept.ToString());
+
+// F1's other half: the same barrier does take over a normal word that is only half typed.
+var midWord = new AssistState("bo", true, "bomb", null, 0);
+var preempt = TickPlan.Step("bo", true, "Ready.", [P("bomb"), P("shield", null, 9, defense: true)], midWord,
+    5000, TargetPriority.ShortestPrompt, true);
+Check("loop-barrier-preempts", preempt.Clear, preempt.ToString());
+
+// ...but a barrier word the typed text can still lead into is continued, not thrown away.
+var sharedPrefix = TickPlan.Step("s", true, "Ready.", [P("sundae"), P("shield", null, 9, defense: true)],
+    new AssistState("s", true, "sundae", null, 0), 5000, TargetPriority.ShortestPrompt, true);
+Check("loop-barrier-shares-prefix", !sharedPrefix.Clear && sharedPrefix.State.CurrentTarget == "shield",
+    sharedPrefix.ToString());
+
+// F5: deleting the last remaining character of a one-character prompt clears and skips it.
+var oneChar = new AssistState("x", true, "x", null, 0);
+var lastChar = TickPlan.Step("", true, "Ready.", [P("x")], oneChar, 5000, TargetPriority.ShortestPrompt, true);
+Check("loop-last-char-delete-skips", lastChar.Clear && lastChar.State.SkipTarget == "x", lastChar.ToString());
+
+// A submitted word empties the field too; that is not a deletion and must skip nothing.
+var submitted = new AssistState("bomb", true, "bomb", null, 0);
+var afterSubmit = TickPlan.Step("", true, "Ready.", [P("next")], submitted, 5000,
+    TargetPriority.ShortestPrompt, true);
+Check("loop-submission-no-skip",
+    !afterSubmit.Clear && afterSubmit.Action == TickAction.Write && afterSubmit.State.SkipTarget == null,
+    afterSubmit.ToString());
+
+// A skipped word stays out of the pool for the window, then comes back.
+var skipping = TickPlan.Step("", true, "Ready.", [P("bomb")], new AssistState(null, false, null, "bomb", 6000),
+    5000, TargetPriority.ShortestPrompt, true);
+Check("loop-skip-window", skipping.Action == TickAction.None, skipping.ToString());
+var skipExpired = TickPlan.Step("", true, "Ready.", [P("bomb")], skipping.State, 7000,
+    TargetPriority.ShortestPrompt, true);
+Check("loop-skip-expires", skipExpired.Action == TickAction.Write, skipExpired.ToString());
+
 Console.WriteLine($"{checks - failures}/{checks} checks passed.");
 return failures == 0 ? 0 : 1;

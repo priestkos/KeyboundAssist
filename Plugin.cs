@@ -32,13 +32,8 @@ public sealed class Plugin : IDalamudPlugin
     private long nextWriteAt;
     private long nextFocusAt;
     private long nextErrorLog;
-    private string? lastWritten;
-    // Set once the field has been read back holding exactly what was written: only then can a shorter
-    // field be a backspace rather than a write that never landed.
-    private bool writeSeen;
-    private string? currentTarget;
-    private string? skipTarget;
-    private long skipUntil;
+    // Everything the update loop decides between reading the field and writing to it.
+    private AssistState state;
 
     public Plugin()
     {
@@ -175,73 +170,24 @@ public sealed class Plugin : IDalamudPlugin
         }
 
         var field = read.Value.Field;
-        var allowed = read.Value.Allowed;
 
         var player = Objects.LocalPlayer;
         var prompts = GameState.Prompts(GameGui, Objects, player?.Position ?? default, player != null);
-        if (skipTarget != null)
-        {
-            if (now < skipUntil) prompts = prompts.Where(p => p.Text != skipTarget).ToArray();
-            else skipTarget = null;
-        }
 
-        // Ownership: the plugin only ever acts on text it wrote and has since read back from the field.
-        if (lastWritten != null && string.Equals(field, lastWritten, StringComparison.OrdinalIgnoreCase))
-            writeSeen = true;
+        // One decision, in one place, with no Dalamud in reach: the skip filter, the ownership proof, the
+        // permission gate on every mutating path, the backspace and the barrier takeover are all inside it,
+        // and tests/ drives this same function.
+        var outcome = TickPlan.Step(field, read.Value.Allowed, read.Value.Reason, prompts, state, now,
+            configuration.Priority, configuration.IgnorePunctuation);
+        state = outcome.State;
+        status = outcome.Status;
 
-        // A backspace has to be able to clear what the plugin typed, or the next frame writes the
-        // character straight back and the field can never be emptied by hand. An empty field counts as a
-        // deletion only while its word is still on screen: once the duty consumes a submitted word the
-        // prompt is gone, and that must not skip anything.
-        var wordShown = currentTarget != null &&
-            prompts.Any(p => string.Equals(p.Text, currentTarget, StringComparison.OrdinalIgnoreCase));
-        var deleted = writeSeen && lastWritten != null &&
-            (field.Length == 0 ? wordShown : TypingPlan.PlayerDeleted(field, lastWritten));
-        if (field.Length == 0)
-        {
-            lastWritten = null;
-            writeSeen = false;
-        }
-        if (deleted)
-        {
-            // The duty prohibits typing: leave the field exactly as the player left it. Nothing below
-            // writes either, so the lock is reported rather than acted on.
-            if (!allowed)
-            {
-                currentTarget = null;
-            }
-            else
-            {
-                input->SetText("");
-                skipTarget = currentTarget;
-                skipUntil = now + 3000;
-                currentTarget = null;
-                status = skipTarget == null ? "Cleared the input." : $"Cleared the input; skipping '{skipTarget}' for a moment.";
-                return;
-            }
-        }
-
-        var step = TypingPlan.Next(field, prompts, configuration.Priority,
-            configuration.IgnorePunctuation, allowed, read.Value.Reason);
-
-        // A barrier word takes over mid-word, but only text this plugin wrote may be dropped, only while
-        // the duty allows typing, and only when the plan really does switch to a different barrier word -
-        // so re-selecting the word in progress can never loop.
-        if (allowed && currentTarget != null && field.Length > 0 && step.Defense &&
-            !string.Equals(step.Target, currentTarget, StringComparison.OrdinalIgnoreCase) &&
-            TypingPlan.IsOwnedPrefix(field, currentTarget, configuration.IgnorePunctuation))
+        if (outcome.Clear)
         {
             input->SetText("");
-            lastWritten = null;
-            writeSeen = false;
-            currentTarget = null;
-            status = "Dropping the partial word for a barrier prompt.";
             return;
         }
-
-        status = step.Status;
-        currentTarget = step.Kind is StepKind.Typing or StepKind.Ready ? step.Target : null;
-        if (step.Kind != StepKind.Typing) return;
+        if (outcome.Action != TickAction.Write) return;
 
         // The player's Enter only reaches the field while it is the active text input.
         if (!input->IsActive)
@@ -255,9 +201,8 @@ public sealed class Plugin : IDalamudPlugin
         var writeAt = Environment.TickCount64;
         if (writeAt < nextWriteAt) return;
         nextWriteAt = writeAt + TypingPlan.DrawDelay(Random.Shared, configuration.CharDelayMinMs, configuration.CharDelayMaxMs);
-        var written = field + step.Next;
+        var written = field + outcome.Next;
         input->SetText(written);
-        lastWritten = written;
-        writeSeen = false;
+        state = state with { LastWritten = written, WriteSeen = false };
     }
 }

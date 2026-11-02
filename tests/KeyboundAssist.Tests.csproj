@@ -13,6 +13,7 @@
   <ItemGroup>
     <Compile Include="../TypingPlan.cs" Link="TypingPlan.cs" />
     <Compile Include="../PromptMap.cs" Link="PromptMap.cs" />
+    <Compile Include="../TickPlan.cs" Link="TickPlan.cs" />
   </ItemGroup>
 
 </Project>
