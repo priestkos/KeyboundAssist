@@ -133,6 +133,7 @@ public sealed class Plugin : IDalamudPlugin
 
         if (!ClientState.IsLoggedIn || !GameState.InGame(ClientState))
         {
+            ActivityKeepAlive.Forget();
             status = "Not in Keybound Brawler.";
             return;
         }

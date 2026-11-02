@@ -22,6 +22,14 @@ internal static unsafe class ActivityKeepAlive
     internal static bool Stopped => failures >= MaxFailures;
     internal static float LastIdleSeconds { get; private set; } = float.NaN;
 
+    // Called when the duty ends: a transient failure in one run must not disable the counter clearing
+    // for the rest of the session, and a fixed layout gets a clean retry next run.
+    internal static void Forget()
+    {
+        next = 0;
+        failures = 0;
+    }
+
     internal static void Tick(long now, bool active)
     {
         if (!active)
