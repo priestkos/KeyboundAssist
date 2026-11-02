@@ -50,6 +50,12 @@ internal static class TypingPlan
         return random.Next(minMs, maxMs + 1);
     }
 
+    // True when the field shrank from the last text the plugin wrote: the player backspaced.
+    // Case-insensitive, because the duty accepts either case for text we wrote.
+    internal static bool PlayerDeleted(string field, string? lastWritten) =>
+        lastWritten != null && lastWritten.Length > field.Length &&
+        lastWritten.StartsWith(field, StringComparison.OrdinalIgnoreCase);
+
     // The field is the authority on what has been typed: the plugin only ever appends the next
     // character, and never deletes or overwrites what the player put there.
     internal static Step Next(string field, IReadOnlyList<Prompt> prompts, TargetPriority priority,

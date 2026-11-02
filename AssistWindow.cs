@@ -14,6 +14,14 @@ internal sealed class AssistWindow(Configuration configuration, Action save, Fun
             save();
         }
 
+        var keepAlive = configuration.KeepAlive;
+        if (ImGui.Checkbox("Keep the activity timer alive", ref keepAlive))
+        {
+            configuration.KeepAlive = keepAlive;
+            save();
+        }
+        ImGui.TextDisabled("Clears the duty's own inactivity counters. The plugin still sends no keys.");
+
         var delayMin = configuration.CharDelayMinMs;
         var delayMax = configuration.CharDelayMaxMs;
         ImGui.SetNextItemWidth(200f);
