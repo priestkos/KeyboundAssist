@@ -96,6 +96,18 @@ mapped = PromptMap.WithDistances([Pm(100, 150, 1f, 1), Pm(101, 150, 1f, 2)],
     [new ActorScreen(7, new Vector2(100, 200), new Vector3(0, 0, 10))], Vector3.Zero);
 Check("map-contested", mapped[0].Distance == null && mapped[1].Distance == null, string.Join(" ", mapped));
 
+// The same two refusals above the scale-estimate threshold: a rejected match must not quietly regain a
+// guessed distance from its label size (the 1.0-scale cases above sit below that threshold and miss it).
+mapped = PromptMap.WithDistances([Pm(100, 150, 1.5f, 1)],
+    [new ActorScreen(7, new Vector2(100, 200), new Vector3(0, 0, 10)),
+     new ActorScreen(8, new Vector2(106, 200), new Vector3(0, 0, 20))], Vector3.Zero);
+Check("map-ambiguous-scaled", mapped[0].Distance == null, mapped[0].ToString());
+
+mapped = PromptMap.WithDistances([Pm(100, 150, 1.5f, 1), Pm(101, 150, 1.4f, 2)],
+    [new ActorScreen(7, new Vector2(100, 200), new Vector3(0, 0, 10))], Vector3.Zero);
+Check("map-contested-scaled", mapped[0].Distance == null && mapped[1].Distance == null,
+    string.Join(" ", mapped));
+
 // Label scale carries a distance estimate until it saturates (calibrated live).
 Check("estimate-live", PromptMap.EstimateDistance(1.50f) is { } e && Math.Abs(e - 12.73f) < 0.05f,
     PromptMap.EstimateDistance(1.50f)?.ToString() ?? "null");
@@ -157,6 +169,28 @@ Check("defense-line-1080", PromptMap.IsDefensePrompt(734, 1080) && !PromptMap.Is
 Check("defense-line-1440", PromptMap.IsDefensePrompt(934, 1440) && !PromptMap.IsDefensePrompt(900, 1440),
     "934/1440 should be defensive, 900/1440 should not");
 Check("defense-line-unknown", !PromptMap.IsDefensePrompt(900, 0), "a zero height must not mark everything");
+
+// A barrier word must be able to finish: at every prefix the plan names the same barrier target, which
+// is what keeps preemption from clearing the barrier's own progress frame after frame.
+Prompt[] onlyBarrier = [P("shield", null, 5, defense: true)];
+var built = "";
+var completes = true;
+while (built.Length < "shield".Length)
+{
+    var nextStep = Next(built, onlyBarrier);
+    if (nextStep.Kind != StepKind.Typing || nextStep.Target != "shield") { completes = false; break; }
+    built += nextStep.Next;
+}
+Check("barrier-word-completes", completes && built == "shield" && Next(built, onlyBarrier).Kind == StepKind.Ready,
+    built);
+
+// Accents are prepared before the first character is taken, not only after it.
+Check("accent-first-char", Next("", [P("éclair")]).Next == 'e', Next("", [P("éclair")]).ToString());
+
+// Ownership: only a prefix of the target can be text the plugin wrote.
+Check("owned-prefix-yes", TypingPlan.IsOwnedPrefix("b", "bomb", true), "expected owned");
+Check("owned-prefix-no", !TypingPlan.IsOwnedPrefix("my note", "bomb", true), "expected not owned");
+Check("owned-prefix-punct", TypingPlan.IsOwnedPrefix("dont", "don't-stop!", true), "expected owned");
 
 Console.WriteLine($"{checks - failures}/{checks} checks passed.");
 return failures == 0 ? 0 : 1;

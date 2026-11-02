@@ -34,6 +34,10 @@ internal static class PromptMap
     {
         var result = prompts.ToArray();
         var pairs = new List<(int Prompt, ActorScreen Actor, float Offset)>();
+        // Outcomes where the match was offered and deliberately refused: these keep no distance at all,
+        // not even the scale proxy, because the proxy is a guess and these are the cases the match
+        // already decided it must not guess.
+        var rejected = new HashSet<int>();
         for (var i = 0; i < prompts.Length; i++)
         {
             var prompt = prompts[i];
@@ -42,13 +46,23 @@ internal static class PromptMap
                 .Select(a => (Actor: a, Offset: Math.Abs(a.Screen.X - prompt.ScreenX)))
                 .OrderBy(c => c.Offset).Take(2).ToArray();
             if (candidates.Length == 0 || candidates[0].Offset > limit) continue;
-            if (candidates.Length > 1 && candidates[1].Offset - candidates[0].Offset < AmbiguityMargin) continue;
+            if (candidates.Length > 1 && candidates[1].Offset - candidates[0].Offset < AmbiguityMargin)
+            {
+                rejected.Add(i);
+                continue;
+            }
             pairs.Add((i, candidates[0].Actor, candidates[0].Offset));
         }
 
         // An enemy carries one prompt; an enemy two labels claim resolves neither of them.
-        foreach (var pair in pairs.GroupBy(p => p.Actor.Entity).Where(g => g.Count() == 1).Select(g => g.Single()))
+        foreach (var group in pairs.GroupBy(p => p.Actor.Entity))
         {
+            if (group.Count() != 1)
+            {
+                foreach (var contested in group) rejected.Add(contested.Prompt);
+                continue;
+            }
+            var pair = group.Single();
             var distance = Vector3.Distance(origin, pair.Actor.World);
             if (float.IsFinite(distance))
                 result[pair.Prompt] = result[pair.Prompt] with { Distance = distance };
@@ -57,7 +71,8 @@ internal static class PromptMap
         // the case XivType added the estimate for - a bound far boss otherwise outranks a close unbound
         // enemy. Saturated labels (> ~24 yalms) give none and sort last.
         for (var i = 0; i < result.Length; i++)
-            if (result[i].Distance == null && EstimateDistance(result[i].Scale) is { } estimate)
+            if (!rejected.Contains(i) && result[i].Distance == null &&
+                EstimateDistance(result[i].Scale) is { } estimate)
                 result[i] = result[i] with { Distance = estimate };
         return result;
     }

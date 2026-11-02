@@ -99,10 +99,10 @@ Pushes to `main` that change the plugin (not docs-only paths) cut a GitHub relea
 
 ## Tests
 
-The decision logic (`TypingPlan.cs`) and the label-to-enemy mapping (`PromptMap.cs`) carry no Dalamud or native dependency, so the harness compiles the same files into a console project and drives them with no game running: shortest-prompt choice, nearest-enemy ordering, prefix continuation, case and accent handling, text the plugin did not type, a prompt that vanishes mid-word, the typing lock, ambiguous and contested label-to-enemy matches, the saturated scale estimate, and the per-character delay draw (in range, varying, fixed when the ends are equal, swapped and out-of-range bounds tolerated, the 1000 ms cap both allowed and fixed), backspace detection, the prompt filter, punctuation stripping, barrier-word priority, and the barrier line at three window heights.
+The decision logic (`TypingPlan.cs`) and the label-to-enemy mapping (`PromptMap.cs`) carry no Dalamud or native dependency, so the harness compiles the same files into a console project and drives them with no game running: shortest-prompt choice, nearest-enemy ordering, prefix continuation, case and accent handling, text the plugin did not type, a prompt that vanishes mid-word, the typing lock, ambiguous and contested label-to-enemy matches, the saturated scale estimate, and the per-character delay draw (in range, varying, fixed when the ends are equal, swapped and out-of-range bounds tolerated, the 1000 ms cap both allowed and fixed), backspace detection, the prompt filter, punctuation stripping, barrier-word priority, a barrier word typed to completion frame by frame, the barrier line at three window heights, owned-prefix clearing, and ambiguous/contested matches above the scale-estimate threshold.
 
 ```
-dotnet run --project tests/KeyboundAssist.Tests.csproj -c Release    # 51 checks
+dotnet run --project tests/KeyboundAssist.Tests.csproj -c Release    # 58 checks
 ```
 
 ## Limits

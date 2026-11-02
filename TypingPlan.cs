@@ -84,6 +84,13 @@ internal static class TypingPlan
         lastWritten != null && lastWritten.Length > field.Length &&
         lastWritten.StartsWith(field, StringComparison.OrdinalIgnoreCase);
 
+    // True when the field is exactly what this plugin's append path could have produced towards that
+    // prompt, in prepared form. Anything else is the player's own text and is never cleared.
+    internal static bool IsOwnedPrefix(string field, string target, bool ignorePunctuation) =>
+        field.Length > 0 &&
+        Prepared(target, ignorePunctuation).StartsWith(Prepared(field, ignorePunctuation),
+            StringComparison.OrdinalIgnoreCase);
+
     // The field is the authority on what has been typed: the plugin only ever appends the next
     // character, and never deletes or overwrites what the player put there.
     internal static Step Next(string field, IReadOnlyList<Prompt> prompts, TargetPriority priority,

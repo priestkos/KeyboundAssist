@@ -174,29 +174,8 @@ public sealed class Plugin : IDalamudPlugin
             return;
         }
 
-        // A backspace has to be able to clear what the plugin typed: without this the next frame
-        // writes the character straight back and the field can never be emptied by hand.
-        // Only a shrink from text this plugin has actually seen in the field counts as a backspace: a
-        // write that did not land leaves lastWritten ahead of the field and must not look like one.
         var field = read.Value.Field;
-        if (lastWritten != null && string.Equals(field, lastWritten, StringComparison.OrdinalIgnoreCase))
-            writeSeen = true;
-        if (field.Length == 0)
-        {
-            lastWritten = null;
-            writeSeen = false;
-        }
-        if (writeSeen && TypingPlan.PlayerDeleted(field, lastWritten))
-        {
-            input->SetText("");
-            skipTarget = currentTarget;
-            skipUntil = now + 3000;
-            lastWritten = null;
-            writeSeen = false;
-            currentTarget = null;
-            status = skipTarget == null ? "Cleared the input." : $"Cleared the input; skipping '{skipTarget}' for a moment.";
-            return;
-        }
+        var allowed = read.Value.Allowed;
 
         var player = Objects.LocalPlayer;
         var prompts = GameState.Prompts(GameGui, Objects, player?.Position ?? default, player != null);
@@ -206,14 +185,51 @@ public sealed class Plugin : IDalamudPlugin
             else skipTarget = null;
         }
 
-        var step = TypingPlan.Next(field, prompts, configuration.Priority,
-            configuration.IgnorePunctuation, read.Value.Allowed, read.Value.Reason);
+        // Ownership: the plugin only ever acts on text it wrote and has since read back from the field.
+        if (lastWritten != null && string.Equals(field, lastWritten, StringComparison.OrdinalIgnoreCase))
+            writeSeen = true;
 
-        // A barrier word takes over mid-word: when the plan switches to a barrier prompt while another
-        // word is only half typed, the partial text is dropped instead of finished. Keyed on the plan's
-        // own choice, so re-selecting the same word can never loop; a finished word is left for Enter.
-        if (currentTarget != null && field.Length > 0 && step.Defense &&
-            !string.Equals(step.Target, currentTarget, StringComparison.OrdinalIgnoreCase))
+        // A backspace has to be able to clear what the plugin typed, or the next frame writes the
+        // character straight back and the field can never be emptied by hand. An empty field counts as a
+        // deletion only while its word is still on screen: once the duty consumes a submitted word the
+        // prompt is gone, and that must not skip anything.
+        var wordShown = currentTarget != null &&
+            prompts.Any(p => string.Equals(p.Text, currentTarget, StringComparison.OrdinalIgnoreCase));
+        var deleted = writeSeen && lastWritten != null &&
+            (field.Length == 0 ? wordShown : TypingPlan.PlayerDeleted(field, lastWritten));
+        if (field.Length == 0)
+        {
+            lastWritten = null;
+            writeSeen = false;
+        }
+        if (deleted)
+        {
+            // The duty prohibits typing: leave the field exactly as the player left it. Nothing below
+            // writes either, so the lock is reported rather than acted on.
+            if (!allowed)
+            {
+                currentTarget = null;
+            }
+            else
+            {
+                input->SetText("");
+                skipTarget = currentTarget;
+                skipUntil = now + 3000;
+                currentTarget = null;
+                status = skipTarget == null ? "Cleared the input." : $"Cleared the input; skipping '{skipTarget}' for a moment.";
+                return;
+            }
+        }
+
+        var step = TypingPlan.Next(field, prompts, configuration.Priority,
+            configuration.IgnorePunctuation, allowed, read.Value.Reason);
+
+        // A barrier word takes over mid-word, but only text this plugin wrote may be dropped, only while
+        // the duty allows typing, and only when the plan really does switch to a different barrier word -
+        // so re-selecting the word in progress can never loop.
+        if (allowed && currentTarget != null && field.Length > 0 && step.Defense &&
+            !string.Equals(step.Target, currentTarget, StringComparison.OrdinalIgnoreCase) &&
+            TypingPlan.IsOwnedPrefix(field, currentTarget, configuration.IgnorePunctuation))
         {
             input->SetText("");
             lastWritten = null;
