@@ -136,12 +136,27 @@ Check("punct-exact-mode",
     Next("dont", [P("don't-stop!")], ignorePunctuation: false).Kind == StepKind.Waiting, "expected waiting");
 Check("punct-prepared", TypingPlan.Prepared("a b1-c!", true) == "a b1c", TypingPlan.Prepared("a b1-c!", true));
 
+// A prompt that opens with punctuation must still start on a letter, and a prompt that is nothing but
+// punctuation can never be answered.
+step = Next("", [P("'ello")]);
+Check("punct-leading-first-char", step.Next == 'e', $"expected 'e', got '{step.Next}'");
+Check("punct-only-skipped", Next("", [P("!!!")]).Kind == StepKind.Waiting, "expected waiting");
+Check("punct-only-beside-real", Next("", [P("!!!"), P("real")]).Target == "real", "expected real");
+
 // A barrier word outranks the configured priority even when it is longer than everything else.
 Prompt[] barrier = [P("alpha"), P("longer defense line!", 5f, 9, defense: true)];
 step = Next("", barrier);
 Check("defense-first", step.Target == "longer defense line!", step.ToString());
+Check("defense-flag-carried", step.Defense, "expected the chosen step to be marked defensive");
 step = Next("", barrier, TargetPriority.NearestEnemy);
 Check("defense-first-nearest", step.Target == "longer defense line!", step.ToString());
+
+// The barrier line scales with the window instead of assuming 1080p.
+Check("defense-line-1080", PromptMap.IsDefensePrompt(734, 1080) && !PromptMap.IsDefensePrompt(680, 1080),
+    "734/1080 should be defensive, 680/1080 should not");
+Check("defense-line-1440", PromptMap.IsDefensePrompt(934, 1440) && !PromptMap.IsDefensePrompt(900, 1440),
+    "934/1440 should be defensive, 900/1440 should not");
+Check("defense-line-unknown", !PromptMap.IsDefensePrompt(900, 0), "a zero height must not mark everything");
 
 Console.WriteLine($"{checks - failures}/{checks} checks passed.");
 return failures == 0 ? 0 : 1;

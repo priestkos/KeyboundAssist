@@ -1,6 +1,7 @@
 using System.Numerics;
 using Dalamud.Game.ClientState.Objects.Enums;
 using Dalamud.Game.ClientState.Objects.Types;
+using Dalamud.Bindings.ImGui;
 using Dalamud.Game.Text.SeStringHandling;
 using Dalamud.Plugin.Services;
 using FFXIVClientStructs.FFXIV.Component.GUI;
@@ -75,6 +76,9 @@ internal static unsafe class GameState
 
         var prompts = new List<Prompt>();
         var now = Environment.TickCount64;
+        // The barrier line is a fraction of the window, so the prompt is judged against the size of the
+        // window it is drawn in rather than a fixed 1080p pixel row.
+        var screenHeight = ImGui.GetIO().DisplaySize.Y;
         for (var i = 0; i < Math.Min((int)manager->NodeListCount, 4096); i++)
         {
             var node = manager->NodeList[i];
@@ -96,7 +100,7 @@ internal static unsafe class GameState
             var screenY = (float)node->ScreenY;
             prompts.Add(new Prompt(node->NodeId, text, masked,
                 node->ScreenX + node->Width * node->ScaleX / 2, screenY, node->ScaleX, null,
-                PromptMap.IsDefensePrompt(screenY)));
+                PromptMap.IsDefensePrompt(screenY, screenHeight)));
         }
 
         if (!hasOrigin || prompts.Count == 0) return prompts.ToArray();

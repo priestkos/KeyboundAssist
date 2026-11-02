@@ -5,7 +5,8 @@ namespace KeyboundAssist;
 
 internal enum StepKind { Unavailable, Waiting, Typing, Ready }
 
-internal readonly record struct Step(StepKind Kind, string Status, string Target = "", char Next = '\0');
+internal readonly record struct Step(StepKind Kind, string Status, string Target = "", char Next = '\0',
+    bool Defense = false);
 
 // Pure decision logic: no Dalamud, no native memory. tests/ compiles this same file.
 internal static class TypingPlan
@@ -28,17 +29,22 @@ internal static class TypingPlan
         bool ignorePunctuation)
     {
         var wanted = Prepared(prefix, ignorePunctuation);
+        // A prompt that prepares to nothing ("!!", a stray symbol) can never be answered, so it is not a
+        // candidate at all - otherwise it would match an empty field and report Ready with no text.
         var matches = prompts
-            .Where(p => Prepared(p.Text, ignorePunctuation).StartsWith(wanted, StringComparison.OrdinalIgnoreCase))
+            .Select(p => (Prompt: p, Text: Prepared(p.Text, ignorePunctuation)))
+            .Where(p => p.Text.Length > 0 && p.Text.StartsWith(wanted, StringComparison.OrdinalIgnoreCase))
             .ToArray();
         if (matches.Length == 0) return null;
         // An unmatched prompt has no distance and sorts last, so nearest-enemy falls back to the
         // shortest prompt instead of guessing.
         var ordered = priority == TargetPriority.NearestEnemy
-            ? matches.OrderByDescending(p => p.Defense)
-                .ThenBy(p => p.Distance ?? float.MaxValue).ThenBy(p => p.Text.Length).ThenBy(p => p.NodeId)
-            : matches.OrderByDescending(p => p.Defense).ThenBy(p => p.Text.Length).ThenBy(p => p.NodeId);
-        return ordered.First();
+            ? matches.OrderByDescending(p => p.Prompt.Defense)
+                .ThenBy(p => p.Prompt.Distance ?? float.MaxValue)
+                .ThenBy(p => p.Text.Length).ThenBy(p => p.Prompt.NodeId)
+            : matches.OrderByDescending(p => p.Prompt.Defense)
+                .ThenBy(p => p.Text.Length).ThenBy(p => p.Prompt.NodeId);
+        return ordered.First().Prompt;
     }
 
     // Accents and the punctuation the duty ignores are removed before anything is compared or typed, so
@@ -87,9 +93,12 @@ internal static class TypingPlan
         if (field.Length == 0)
         {
             var fresh = Choose(prompts, "", priority, ignorePunctuation);
-            return fresh == null
-                ? new(StepKind.Waiting, "Waiting for an enemy prompt.")
-                : new(StepKind.Typing, $"Typing '{fresh.Value.Text}'.", fresh.Value.Text, fresh.Value.Text[0]);
+            if (fresh == null) return new(StepKind.Waiting, "Waiting for an enemy prompt.");
+            // The first character comes from the prepared form, never the drawn one: a prompt that opens
+            // with punctuation would otherwise type the punctuation and lose the field.
+            var opening = Prepared(fresh.Value.Text, ignorePunctuation);
+            return new(StepKind.Typing, $"Typing '{fresh.Value.Text}'.", fresh.Value.Text, opening[0],
+                fresh.Value.Defense);
         }
 
         var match = Choose(prompts, field, priority, ignorePunctuation);
@@ -99,7 +108,9 @@ internal static class TypingPlan
         var typed = Prepared(field, ignorePunctuation).Length;
         var target = Prepared(match.Value.Text, ignorePunctuation);
         if (typed >= target.Length)
-            return new(StepKind.Ready, $"'{match.Value.Text}' is typed. Press Enter.", match.Value.Text);
-        return new(StepKind.Typing, $"Typing '{match.Value.Text}'.", match.Value.Text, target[typed]);
+            return new(StepKind.Ready, $"'{match.Value.Text}' is typed. Press Enter.", match.Value.Text,
+                Defense: match.Value.Defense);
+        return new(StepKind.Typing, $"Typing '{match.Value.Text}'.", match.Value.Text, target[typed],
+            match.Value.Defense);
     }
 }

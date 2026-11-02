@@ -99,16 +99,17 @@ Pushes to `main` that change the plugin (not docs-only paths) cut a GitHub relea
 
 ## Tests
 
-The decision logic (`TypingPlan.cs`) and the label-to-enemy mapping (`PromptMap.cs`) carry no Dalamud or native dependency, so the harness compiles the same files into a console project and drives them with no game running: shortest-prompt choice, nearest-enemy ordering, prefix continuation, case and accent handling, text the plugin did not type, a prompt that vanishes mid-word, the typing lock, ambiguous and contested label-to-enemy matches, the saturated scale estimate, and the per-character delay draw (in range, varying, fixed when the ends are equal, swapped and out-of-range bounds tolerated, the 1000 ms cap both allowed and fixed), backspace detection, the prompt filter, punctuation stripping, and barrier-word priority.
+The decision logic (`TypingPlan.cs`) and the label-to-enemy mapping (`PromptMap.cs`) carry no Dalamud or native dependency, so the harness compiles the same files into a console project and drives them with no game running: shortest-prompt choice, nearest-enemy ordering, prefix continuation, case and accent handling, text the plugin did not type, a prompt that vanishes mid-word, the typing lock, ambiguous and contested label-to-enemy matches, the saturated scale estimate, and the per-character delay draw (in range, varying, fixed when the ends are equal, swapped and out-of-range bounds tolerated, the 1000 ms cap both allowed and fixed), backspace detection, the prompt filter, punctuation stripping, barrier-word priority, and the barrier line at three window heights.
 
 ```
-dotnet run --project tests/KeyboundAssist.Tests.csproj -c Release    # 44 checks
+dotnet run --project tests/KeyboundAssist.Tests.csproj -c Release    # 51 checks
 ```
 
 ## Limits
 
 - **Not verified in game.** The offline checks cover the decision and mapping logic only. The native reads and the write path come from three independently live-validated plugins (XivType, Keybound Pilot, AutoKeyboundBrawler) but have not been exercised on this client yet; the first real run is the test.
-- The barrier line (`screenY ≥ 700`), the 3.5 s hold after a locking cast and the punctuation rule are taken from AutoKeyboundBrawler's live notes, not measured on this client — if a barrier word is never picked, or a word typed without punctuation is rejected, those are the constants to revisit (punctuation has its own switch).
+- The barrier line is a fraction of the window (700/1080, the row AutoKeyboundBrawler measured on 1080p), the 3.5 s hold after a locking cast and the punctuation rule come from that plugin's live notes rather than from measurement on this client — if a barrier word is never picked, or a word typed without punctuation is rejected, those are the constants to revisit (punctuation has its own switch).
+- The pre-cast hold matches the two spell names in English, so on a non-English client only the duty's own lock applies, and that one engages late.
 - The activity keep-alive zeroes memory the game owns: the client's `InputTimerModule` counters and the duty agent's own idle pair, gated on the agent's HUD pointer matching. The 2-minute duty kick and 10-minute client kick it targets are AutoKeyboundBrawler's documented thresholds, not measured here. `/keyboundassist status` prints how many resets it has made, the consecutive-failure count and the last idle reading, so a wrong layout shows up as failures rather than silent writes.
 - **If the duty keeps the submitted word in the field**, the plugin waits rather than deleting it — clear the field yourself (Backspace) and it resumes. This is why it never clears text silently.
 - The nearest-enemy match is a screen-space heuristic: labels within 48 px × scale of an enemy are matched, two enemies under 12 px apart resolve nothing, and beyond about 24 yalms the label stops carrying a distance.

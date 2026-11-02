@@ -33,7 +33,9 @@ public sealed class Plugin : IDalamudPlugin
     private long nextFocusAt;
     private long nextErrorLog;
     private string? lastWritten;
-    private string? lastSeen;
+    // Set once the field has been read back holding exactly what was written: only then can a shorter
+    // field be a backspace rather than a write that never landed.
+    private bool writeSeen;
     private string? currentTarget;
     private string? skipTarget;
     private long skipUntil;
@@ -176,15 +178,21 @@ public sealed class Plugin : IDalamudPlugin
         // writes the character straight back and the field can never be emptied by hand.
         // Only a shrink from text this plugin has actually seen in the field counts as a backspace: a
         // write that did not land leaves lastWritten ahead of the field and must not look like one.
-        var owned = lastWritten != null && lastWritten == lastSeen;
-        lastSeen = read.Value.Field;
-        if (read.Value.Field.Length == 0) lastWritten = null;
-        if (owned && TypingPlan.PlayerDeleted(read.Value.Field, lastWritten))
+        var field = read.Value.Field;
+        if (lastWritten != null && string.Equals(field, lastWritten, StringComparison.OrdinalIgnoreCase))
+            writeSeen = true;
+        if (field.Length == 0)
+        {
+            lastWritten = null;
+            writeSeen = false;
+        }
+        if (writeSeen && TypingPlan.PlayerDeleted(field, lastWritten))
         {
             input->SetText("");
             skipTarget = currentTarget;
             skipUntil = now + 3000;
             lastWritten = null;
+            writeSeen = false;
             currentTarget = null;
             status = skipTarget == null ? "Cleared the input." : $"Cleared the input; skipping '{skipTarget}' for a moment.";
             return;
@@ -198,20 +206,23 @@ public sealed class Plugin : IDalamudPlugin
             else skipTarget = null;
         }
 
-        // A barrier word is urgent: if one is on screen while a normal word is only half typed, drop the
-        // partial text so the next pass takes the barrier word instead. A complete word is left alone -
-        // the player is one Enter away from submitting it.
-        if (currentTarget != null && read.Value.Field.Length > 0 && prompts.Any(p => p.Defense) &&
-            !string.Equals(read.Value.Field, currentTarget, StringComparison.OrdinalIgnoreCase))
+        var step = TypingPlan.Next(field, prompts, configuration.Priority,
+            configuration.IgnorePunctuation, read.Value.Allowed, read.Value.Reason);
+
+        // A barrier word takes over mid-word: when the plan switches to a barrier prompt while another
+        // word is only half typed, the partial text is dropped instead of finished. Keyed on the plan's
+        // own choice, so re-selecting the same word can never loop; a finished word is left for Enter.
+        if (currentTarget != null && field.Length > 0 && step.Defense &&
+            !string.Equals(step.Target, currentTarget, StringComparison.OrdinalIgnoreCase))
         {
             input->SetText("");
             lastWritten = null;
+            writeSeen = false;
+            currentTarget = null;
             status = "Dropping the partial word for a barrier prompt.";
             return;
         }
 
-        var step = TypingPlan.Next(read.Value.Field, prompts, configuration.Priority,
-            configuration.IgnorePunctuation, read.Value.Allowed, read.Value.Reason);
         status = step.Status;
         currentTarget = step.Kind is StepKind.Typing or StepKind.Ready ? step.Target : null;
         if (step.Kind != StepKind.Typing) return;
@@ -228,8 +239,9 @@ public sealed class Plugin : IDalamudPlugin
         var writeAt = Environment.TickCount64;
         if (writeAt < nextWriteAt) return;
         nextWriteAt = writeAt + TypingPlan.DrawDelay(Random.Shared, configuration.CharDelayMinMs, configuration.CharDelayMaxMs);
-        var written = read.Value.Field + step.Next;
+        var written = field + step.Next;
         input->SetText(written);
         lastWritten = written;
+        writeSeen = false;
     }
 }

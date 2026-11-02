@@ -13,11 +13,12 @@ internal readonly record struct ActorScreen(uint Entity, Vector2 Screen, Vector3
 internal static class PromptMap
 {
     // A player defence prompt is drawn at the barrier line at the bottom of the screen (live geometry
-    // from AutoKeyboundBrawler: ScreenY ~734 there, marching adds stop around 680), so anything at or
-    // below this line is a barrier word rather than an enemy's word.
-    internal const float DefenseScreenY = 700f;
+    // from AutoKeyboundBrawler: ScreenY ~734 of 1080 there, marching adds stop around 680), expressed as
+    // a fraction so it holds at any window size rather than only the 1080p it was measured at.
+    internal const float DefenseLineFraction = 700f / 1080f;
 
-    internal static bool IsDefensePrompt(float screenY) => screenY >= DefenseScreenY;
+    internal static bool IsDefensePrompt(float screenY, float screenHeight) =>
+        screenHeight > 0 && screenY >= screenHeight * DefenseLineFraction;
     // Labels float above their enemy, so matching is by projected screen position. Calibrated live on
     // this client: a label sits within 48 px * scale of its enemy, and two enemies closer than 12 px
     // in screen X cannot be told apart.
