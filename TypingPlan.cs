@@ -22,20 +22,35 @@ internal static class TypingPlan
         return builder.ToString().Normalize(NormalizationForm.FormC);
     }
 
-    // The prompts that continue what is already in the field. One prompt is aimed at per word:
-    // whichever the configured priority puts first.
-    internal static Prompt? Choose(IReadOnlyList<Prompt> prompts, string prefix, TargetPriority priority)
+    // The prompts that continue what is already in the field, best first: a barrier word the player has
+    // to answer outranks everything, then the configured priority.
+    internal static Prompt? Choose(IReadOnlyList<Prompt> prompts, string prefix, TargetPriority priority,
+        bool ignorePunctuation)
     {
-        var wanted = Typeable(prefix);
+        var wanted = Prepared(prefix, ignorePunctuation);
         var matches = prompts
-            .Where(p => Typeable(p.Text).StartsWith(wanted, StringComparison.OrdinalIgnoreCase))
+            .Where(p => Prepared(p.Text, ignorePunctuation).StartsWith(wanted, StringComparison.OrdinalIgnoreCase))
             .ToArray();
         if (matches.Length == 0) return null;
         // An unmatched prompt has no distance and sorts last, so nearest-enemy falls back to the
         // shortest prompt instead of guessing.
-        return priority == TargetPriority.NearestEnemy
-            ? matches.OrderBy(p => p.Distance ?? float.MaxValue).ThenBy(p => p.Text.Length).ThenBy(p => p.NodeId).First()
-            : matches.OrderBy(p => p.Text.Length).ThenBy(p => p.NodeId).First();
+        var ordered = priority == TargetPriority.NearestEnemy
+            ? matches.OrderByDescending(p => p.Defense)
+                .ThenBy(p => p.Distance ?? float.MaxValue).ThenBy(p => p.Text.Length).ThenBy(p => p.NodeId)
+            : matches.OrderByDescending(p => p.Defense).ThenBy(p => p.Text.Length).ThenBy(p => p.NodeId);
+        return ordered.First();
+    }
+
+    // Accents and the punctuation the duty ignores are removed before anything is compared or typed, so
+    // the field, the prompt and the display all agree on what "typed so far" means.
+    internal static string Prepared(string text, bool ignorePunctuation)
+    {
+        var typeable = Typeable(text);
+        if (!ignorePunctuation) return typeable;
+        var builder = new StringBuilder(typeable.Length);
+        foreach (var c in typeable)
+            if (char.IsLetterOrDigit(c) || c == ' ') builder.Append(c);
+        return builder.ToString();
     }
 
     // A fresh draw per character, so the typing has no fixed cadence. Equal bounds mean a fixed
@@ -66,23 +81,23 @@ internal static class TypingPlan
     // The field is the authority on what has been typed: the plugin only ever appends the next
     // character, and never deletes or overwrites what the player put there.
     internal static Step Next(string field, IReadOnlyList<Prompt> prompts, TargetPriority priority,
-        bool allowed, string reason)
+        bool ignorePunctuation, bool allowed, string reason)
     {
         if (!allowed) return new(StepKind.Unavailable, reason);
         if (field.Length == 0)
         {
-            var fresh = Choose(prompts, "", priority);
+            var fresh = Choose(prompts, "", priority, ignorePunctuation);
             return fresh == null
                 ? new(StepKind.Waiting, "Waiting for an enemy prompt.")
                 : new(StepKind.Typing, $"Typing '{fresh.Value.Text}'.", fresh.Value.Text, fresh.Value.Text[0]);
         }
 
-        var match = Choose(prompts, field, priority);
+        var match = Choose(prompts, field, priority, ignorePunctuation);
         if (match == null)
             return new(StepKind.Waiting, $"The input holds '{field}'. Waiting for it to clear.");
 
-        var typed = Typeable(field).Length;
-        var target = Typeable(match.Value.Text);
+        var typed = Prepared(field, ignorePunctuation).Length;
+        var target = Prepared(match.Value.Text, ignorePunctuation);
         if (typed >= target.Length)
             return new(StepKind.Ready, $"'{match.Value.Text}' is typed. Press Enter.", match.Value.Text);
         return new(StepKind.Typing, $"Typing '{match.Value.Text}'.", match.Value.Text, target[typed]);

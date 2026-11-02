@@ -17,6 +17,12 @@ internal static unsafe class GameState
     // duty itself, 1360 the Square outside it.
     internal const uint GameTerritory = 1359;
 
+    // A veiled prompt whose label text is gone can still be answered from what it showed a moment ago.
+    private const int MemoryLifeMs = 5000;
+    private static readonly Dictionary<uint, (string Text, long Seen)> Memory = [];
+
+    internal static void ResetMemory() => Memory.Clear();
+
     internal static bool InGame(IClientState client) => client.TerritoryType == GameTerritory;
 
     internal static AtkUnitBase* InputAddon(IGameGui gui)
@@ -68,6 +74,7 @@ internal static unsafe class GameState
         if (manager->NodeList == null) return [];
 
         var prompts = new List<Prompt>();
+        var now = Environment.TickCount64;
         for (var i = 0; i < Math.Min((int)manager->NodeListCount, 4096); i++)
         {
             var node = manager->NodeList[i];
@@ -80,10 +87,16 @@ internal static unsafe class GameState
             var masked = !labelShown && Masked(&component->UldManager);
             if (!labelShown && !masked) continue;
             var text = SeString.Parse(((AtkTextNode*)label)->NodeText.AsSpan()).TextValue.Trim();
+            if (text.Length == 0 && masked && Memory.TryGetValue(node->NodeId, out var remembered) &&
+                now - remembered.Seen < MemoryLifeMs)
+                text = remembered.Text;
             if (text.Length == 0 || text.Length > 160) continue;
             if (!TypingPlan.IsTypeableWord(text)) continue;
+            if (!masked) Memory[node->NodeId] = (text, now);
+            var screenY = (float)node->ScreenY;
             prompts.Add(new Prompt(node->NodeId, text, masked,
-                node->ScreenX + node->Width * node->ScaleX / 2, node->ScreenY, node->ScaleX, null));
+                node->ScreenX + node->Width * node->ScaleX / 2, screenY, node->ScaleX, null,
+                PromptMap.IsDefensePrompt(screenY)));
         }
 
         if (!hasOrigin || prompts.Count == 0) return prompts.ToArray();

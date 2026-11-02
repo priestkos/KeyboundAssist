@@ -34,6 +34,9 @@ A short **mock-up** walkthrough (not real gameplay) cross-fades through the same
 - **Backspace clears what it typed** — a single Backspace over the plugin's own characters empties the field and skips that word for a moment instead of writing it straight back.
 - **Keeps the duty's inactivity timer alive** — a direct write into the field is not input, so the game still counts you as idle and expels you; the plugin clears the same counters a physical key would, and still sends no keystroke.
 - **Never sends a keystroke** — it writes into the activity's text component in process. Your Enter is the only key pressed during a word, so nothing can land in chat.
+- **Answers barrier words first** — a player defence prompt is drawn at the barrier line at the bottom of the screen, and it outranks both targeting modes; if one appears while a normal word is only half typed, the partial text is dropped and the barrier word takes over.
+- **Stops before the locking cast, not after** — Dynamic Sensory Jammer and Cursed Gaze are read from the enemy cast bar, so typing pauses for the cast and for 3.5 s after it resolves, instead of waiting for the field's own lock to engage.
+- **Ignores punctuation the duty ignores** — "don't-stop!" is answered by typing `dontstop`; turn it off to type the prompt exactly as drawn.
 - **Follows the duty's rules** — it does not write while the activity prohibits typing, and it will not delete or overwrite text you typed yourself.
 
 ### What it is not meant to do
@@ -71,6 +74,7 @@ Each frame the plugin reads the field, picks the next step, and writes at most o
 - **Fill prompts for me** — the master switch; it is on when the plugin first loads.
 - **Delay per character** — a range in milliseconds, 0–1000, default **30–60**. Every character draws a fresh delay inside that range, so the typing has no fixed cadence; set both ends to the same value for a fixed delay. 0 is one character per frame. The duty scores per submitted word, so the delay only exists to keep the field readable.
 - **Keep the activity timer alive** — on by default. Clears the duty's own inactivity counters every 3 s so the expulsion timer never fires; turn it off to leave that entirely to your real input.
+- **Ignore punctuation** — on by default; strips the punctuation the duty ignores before typing. Turn it off if words ever stop matching.
 - **Target** — `Shortest prompt` or `Nearest enemy`. A prompt with no resolvable enemy always sorts last in nearest mode.
 
 The plugin does not persist anything else. It is only active inside the duty.
@@ -95,15 +99,16 @@ Pushes to `main` that change the plugin (not docs-only paths) cut a GitHub relea
 
 ## Tests
 
-The decision logic (`TypingPlan.cs`) and the label-to-enemy mapping (`PromptMap.cs`) carry no Dalamud or native dependency, so the harness compiles the same files into a console project and drives them with no game running: shortest-prompt choice, nearest-enemy ordering, prefix continuation, case and accent handling, text the plugin did not type, a prompt that vanishes mid-word, the typing lock, ambiguous and contested label-to-enemy matches, the saturated scale estimate, and the per-character delay draw (in range, varying, fixed when the ends are equal, swapped and out-of-range bounds tolerated, the 1000 ms cap both allowed and fixed), backspace detection, and the prompt filter.
+The decision logic (`TypingPlan.cs`) and the label-to-enemy mapping (`PromptMap.cs`) carry no Dalamud or native dependency, so the harness compiles the same files into a console project and drives them with no game running: shortest-prompt choice, nearest-enemy ordering, prefix continuation, case and accent handling, text the plugin did not type, a prompt that vanishes mid-word, the typing lock, ambiguous and contested label-to-enemy matches, the saturated scale estimate, and the per-character delay draw (in range, varying, fixed when the ends are equal, swapped and out-of-range bounds tolerated, the 1000 ms cap both allowed and fixed), backspace detection, the prompt filter, punctuation stripping, and barrier-word priority.
 
 ```
-dotnet run --project tests/KeyboundAssist.Tests.csproj -c Release    # 38 checks
+dotnet run --project tests/KeyboundAssist.Tests.csproj -c Release    # 44 checks
 ```
 
 ## Limits
 
 - **Not verified in game.** The offline checks cover the decision and mapping logic only. The native reads and the write path come from three independently live-validated plugins (XivType, Keybound Pilot, AutoKeyboundBrawler) but have not been exercised on this client yet; the first real run is the test.
+- The barrier line (`screenY ≥ 700`), the 3.5 s hold after a locking cast and the punctuation rule are taken from AutoKeyboundBrawler's live notes, not measured on this client — if a barrier word is never picked, or a word typed without punctuation is rejected, those are the constants to revisit (punctuation has its own switch).
 - The activity keep-alive zeroes memory the game owns: the client's `InputTimerModule` counters and the duty agent's own idle pair, gated on the agent's HUD pointer matching. The 2-minute duty kick and 10-minute client kick it targets are AutoKeyboundBrawler's documented thresholds, not measured here. `/keyboundassist status` prints how many resets it has made, the consecutive-failure count and the last idle reading, so a wrong layout shows up as failures rather than silent writes.
 - **If the duty keeps the submitted word in the field**, the plugin waits rather than deleting it — clear the field yourself (Backspace) and it resumes. This is why it never clears text silently.
 - The nearest-enemy match is a screen-space heuristic: labels within 48 px × scale of an enemy are matched, two enemies under 12 px apart resolve nothing, and beyond about 24 yalms the label stops carrying a distance.

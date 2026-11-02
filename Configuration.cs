@@ -19,6 +19,10 @@ internal sealed class Configuration : IPluginConfiguration
     // duty's expulsion timer entirely to the player's real input.
     public bool KeepAlive { get; set; } = true;
 
+    // The duty matches Latin prompts without their punctuation, so typing "dontstop" answers
+    // "don't-stop!". Off types the prompt exactly as drawn.
+    public bool IgnorePunctuation { get; set; } = true;
+
     public void Normalize()
     {
         // Equal bounds are a legal choice (fixed delay); a hand-edited file may hold min > max.

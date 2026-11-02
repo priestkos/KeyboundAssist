@@ -22,6 +22,14 @@ internal sealed class AssistWindow(Configuration configuration, Action save, Fun
         }
         ImGui.TextDisabled("Clears the duty's own inactivity counters. The plugin still sends no keys.");
 
+        var ignorePunctuation = configuration.IgnorePunctuation;
+        if (ImGui.Checkbox("Ignore punctuation", ref ignorePunctuation))
+        {
+            configuration.IgnorePunctuation = ignorePunctuation;
+            save();
+        }
+        ImGui.TextDisabled("Types \"dontstop\" for \"don't-stop!\". Turn it off if words stop matching.");
+
         var delayMin = configuration.CharDelayMinMs;
         var delayMax = configuration.CharDelayMaxMs;
         ImGui.SetNextItemWidth(200f);

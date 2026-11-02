@@ -15,12 +15,13 @@ void Check(string name, bool condition, string detail)
 Prompt[] W(params string[] words) =>
     words.Select(w => new Prompt(0, w, false, 0, 0, 1f, null)).ToArray();
 
-Prompt P(string text, float? distance = null, uint node = 0) => new(node, text, false, 0, 0, 1f, distance);
+Prompt P(string text, float? distance = null, uint node = 0, bool defense = false) =>
+    new(node, text, false, 0, 0, 1f, distance, defense);
 Prompt Pm(float x, float y, float scale, uint node) => new(node, "w" + node, false, x, y, scale, null);
 
 Step Next(string field, Prompt[] prompts, TargetPriority priority = TargetPriority.ShortestPrompt,
-    bool allowed = true, string reason = "prohibited") =>
-    TypingPlan.Next(field, prompts, priority, allowed, reason);
+    bool allowed = true, string reason = "prohibited", bool ignorePunctuation = true) =>
+    TypingPlan.Next(field, prompts, priority, ignorePunctuation, allowed, reason);
 
 // Empty field: pick the shortest prompt and start it.
 var step = Next("", W("nidhogg", "ifrit", "bomb"));
@@ -127,6 +128,20 @@ Check("word-punctuated", TypingPlan.IsTypeableWord("don't-stop!"), "expected tru
 Check("word-kana-skipped", !TypingPlan.IsTypeableWord("レッド"), "expected false");
 Check("word-kanji-skipped", !TypingPlan.IsTypeableWord("漢字"), "expected false");
 Check("word-empty-skipped", !TypingPlan.IsTypeableWord(""), "expected false");
+
+// Punctuation the duty ignores is dropped before comparing and typing.
+Check("punct-first-char", Next("", [P("don't-stop!")]).Next == 'd', "expected 'd'");
+Check("punct-ready", Next("dontstop", [P("don't-stop!")]).Kind == StepKind.Ready, "expected ready");
+Check("punct-exact-mode",
+    Next("dont", [P("don't-stop!")], ignorePunctuation: false).Kind == StepKind.Waiting, "expected waiting");
+Check("punct-prepared", TypingPlan.Prepared("a b1-c!", true) == "a b1c", TypingPlan.Prepared("a b1-c!", true));
+
+// A barrier word outranks the configured priority even when it is longer than everything else.
+Prompt[] barrier = [P("alpha"), P("longer defense line!", 5f, 9, defense: true)];
+step = Next("", barrier);
+Check("defense-first", step.Target == "longer defense line!", step.ToString());
+step = Next("", barrier, TargetPriority.NearestEnemy);
+Check("defense-first-nearest", step.Target == "longer defense line!", step.ToString());
 
 Console.WriteLine($"{checks - failures}/{checks} checks passed.");
 return failures == 0 ? 0 : 1;

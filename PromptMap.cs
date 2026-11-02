@@ -6,12 +6,18 @@ internal enum TargetPriority { ShortestPrompt, NearestEnemy }
 
 // One enemy prompt. No Dalamud types, so tests/ compiles this file with the decision logic.
 internal readonly record struct Prompt(uint NodeId, string Text, bool Masked,
-    float ScreenX, float ScreenY, float Scale, float? Distance);
+    float ScreenX, float ScreenY, float Scale, float? Distance, bool Defense = false);
 
 internal readonly record struct ActorScreen(uint Entity, Vector2 Screen, Vector3 World);
 
 internal static class PromptMap
 {
+    // A player defence prompt is drawn at the barrier line at the bottom of the screen (live geometry
+    // from AutoKeyboundBrawler: ScreenY ~734 there, marching adds stop around 680), so anything at or
+    // below this line is a barrier word rather than an enemy's word.
+    internal const float DefenseScreenY = 700f;
+
+    internal static bool IsDefensePrompt(float screenY) => screenY >= DefenseScreenY;
     // Labels float above their enemy, so matching is by projected screen position. Calibrated live on
     // this client: a label sits within 48 px * scale of its enemy, and two enemies closer than 12 px
     // in screen X cannot be told apart.

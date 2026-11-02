@@ -136,6 +136,8 @@ public sealed class Plugin : IDalamudPlugin
         if (!ClientState.IsLoggedIn || !GameState.InGame(ClientState))
         {
             ActivityKeepAlive.Forget();
+            CastBar.Reset();
+            GameState.ResetMemory();
             status = "Not in Keybound Brawler.";
             return;
         }
@@ -145,6 +147,14 @@ public sealed class Plugin : IDalamudPlugin
         // Runs before the input field is even looked at: the duty's timer keeps counting in the gaps
         // between waves, which is exactly when nothing else in this plugin is doing work.
         ActivityKeepAlive.Tick(now, configuration.KeepAlive);
+
+        // Dynamic Sensory Jammer and Cursed Gaze punish any typing for their whole cast, and the field's
+        // own lock only reports them once it has already engaged. The cast bar is the early warning.
+        if (CastBar.Blocked(GameGui, now, out var holdReason))
+        {
+            status = holdReason;
+            return;
+        }
 
         var addon = GameState.InputAddon(GameGui);
         var input = GameState.InputComponent(addon);
@@ -188,8 +198,20 @@ public sealed class Plugin : IDalamudPlugin
             else skipTarget = null;
         }
 
+        // A barrier word is urgent: if one is on screen while a normal word is only half typed, drop the
+        // partial text so the next pass takes the barrier word instead. A complete word is left alone -
+        // the player is one Enter away from submitting it.
+        if (currentTarget != null && read.Value.Field.Length > 0 && prompts.Any(p => p.Defense) &&
+            !string.Equals(read.Value.Field, currentTarget, StringComparison.OrdinalIgnoreCase))
+        {
+            input->SetText("");
+            lastWritten = null;
+            status = "Dropping the partial word for a barrier prompt.";
+            return;
+        }
+
         var step = TypingPlan.Next(read.Value.Field, prompts, configuration.Priority,
-            read.Value.Allowed, read.Value.Reason);
+            configuration.IgnorePunctuation, read.Value.Allowed, read.Value.Reason);
         status = step.Status;
         currentTarget = step.Kind is StepKind.Typing or StepKind.Ready ? step.Target : null;
         if (step.Kind != StepKind.Typing) return;
