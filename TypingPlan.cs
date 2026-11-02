@@ -50,6 +50,13 @@ internal static class TypingPlan
         return random.Next(minMs, maxMs + 1);
     }
 
+    // A prompt the plugin can actually answer: printable ASCII plus Latin letters, because an accented
+    // prompt is typed as its base letter. Kanji, kana and Cyrillic belong to a client whose real answer
+    // sits in a different label, so those words are skipped rather than typed wrong.
+    internal static bool IsTypeableWord(string text) =>
+        text.Length is > 0 and <= 160 &&
+        text.All(c => c is >= ' ' and <= '~' || c is >= '\u00C0' and <= '\u024F');
+
     // True when the field shrank from the last text the plugin wrote: the player backspaced.
     // Case-insensitive, because the duty accepts either case for text we wrote.
     internal static bool PlayerDeleted(string field, string? lastWritten) =>

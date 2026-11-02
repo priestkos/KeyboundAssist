@@ -21,6 +21,7 @@ internal static unsafe class ActivityKeepAlive
     internal static int Failures => failures;
     internal static bool Stopped => failures >= MaxFailures;
     internal static float LastIdleSeconds { get; private set; } = float.NaN;
+    internal static bool DedicatedOk { get; private set; }
 
     // Called when the duty ends: a transient failure in one run must not disable the counter clearing
     // for the rest of the session, and a fixed layout gets a clean retry next run.
@@ -46,9 +47,11 @@ internal static unsafe class ActivityKeepAlive
 
     private static bool Touch()
     {
-        var generic = TouchGenericTimers();
-        var dedicated = TouchDedicatedTimers();
-        return generic && dedicated;
+        // Only the generic module can latch this off: its layout is compile-time, so a failure means the
+        // module itself is unavailable. The duty agent's pair is a guarded pointer walk that blips during
+        // scene changes, so it stays best-effort and is reported instead of disabling the whole reset.
+        DedicatedOk = TouchDedicatedTimers();
+        return TouchGenericTimers();
     }
 
     // InputTimerModule is the module the game itself uses for AFK and duty withdrawal.

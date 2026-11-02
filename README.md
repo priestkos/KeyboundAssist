@@ -95,10 +95,10 @@ Pushes to `main` that change the plugin (not docs-only paths) cut a GitHub relea
 
 ## Tests
 
-The decision logic (`TypingPlan.cs`) and the label-to-enemy mapping (`PromptMap.cs`) carry no Dalamud or native dependency, so the harness compiles the same files into a console project and drives them with no game running: shortest-prompt choice, nearest-enemy ordering, prefix continuation, case and accent handling, text the plugin did not type, a prompt that vanishes mid-word, the typing lock, ambiguous and contested label-to-enemy matches, the saturated scale estimate, and the per-character delay draw (in range, varying, fixed when the ends are equal, swapped and out-of-range bounds tolerated, the 1000 ms cap both allowed and fixed), and backspace detection.
+The decision logic (`TypingPlan.cs`) and the label-to-enemy mapping (`PromptMap.cs`) carry no Dalamud or native dependency, so the harness compiles the same files into a console project and drives them with no game running: shortest-prompt choice, nearest-enemy ordering, prefix continuation, case and accent handling, text the plugin did not type, a prompt that vanishes mid-word, the typing lock, ambiguous and contested label-to-enemy matches, the saturated scale estimate, and the per-character delay draw (in range, varying, fixed when the ends are equal, swapped and out-of-range bounds tolerated, the 1000 ms cap both allowed and fixed), backspace detection, and the prompt filter.
 
 ```
-dotnet run --project tests/KeyboundAssist.Tests.csproj -c Release    # 31 checks
+dotnet run --project tests/KeyboundAssist.Tests.csproj -c Release    # 38 checks
 ```
 
 ## Limits
@@ -108,7 +108,7 @@ dotnet run --project tests/KeyboundAssist.Tests.csproj -c Release    # 31 checks
 - **If the duty keeps the submitted word in the field**, the plugin waits rather than deleting it — clear the field yourself (Backspace) and it resumes. This is why it never clears text silently.
 - The nearest-enemy match is a screen-space heuristic: labels within 48 px × scale of an enemy are matched, two enemies under 12 px apart resolve nothing, and beyond about 24 yalms the label stops carrying a distance.
 - The static-reveal read trusts the label text behind the tiles. If a patch stops hiding the label there, the word simply stops being veiled — nothing breaks.
-- English prompt labels only (node 20). The Japanese client shows the hiragana reading at node 22 and is not read.
+- English prompt labels only (node 20), and only words made of printable ASCII or Latin letters: an accented prompt is typed as its base letter, while a kanji or kana prompt belongs to a client whose real answer sits in another label, so it is skipped rather than typed wrong. The Japanese client's hiragana reading (node 22) is not read.
 - The plugin does not submit. Every word costs you one Enter.
 - Territory ids and addon node ids are taken from the 7.x client; a patch that renumbers them makes the plugin wait rather than misbehave, and `/keyboundassist status` says which part is missing.
 

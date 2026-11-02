@@ -100,6 +100,10 @@ Check("estimate-live", PromptMap.EstimateDistance(1.50f) is { } e && Math.Abs(e 
     PromptMap.EstimateDistance(1.50f)?.ToString() ?? "null");
 Check("estimate-saturated", PromptMap.EstimateDistance(1.10f) == null, "expected null");
 
+// A label with no matched enemy still gets the scale proxy, so nearest mode can rank it.
+var proxy = PromptMap.WithDistances([Pm(100, 150, 1.5f, 1)], [], Vector3.Zero);
+Check("map-scale-proxy", proxy[0].Distance is { } pd && Math.Abs(pd - 12.73f) < 0.05f, proxy[0].ToString());
+
 // Per-character delay: a fresh draw inside the range, equal ends fixed, bad bounds tolerated.
 var rng = new Random(1234);
 var draws = Enumerable.Range(0, 400).Select(_ => TypingPlan.DrawDelay(rng, 30, 60)).ToArray();
@@ -115,6 +119,14 @@ Check("delay-at-cap-is-fixed", TypingPlan.DrawDelay(rng, 1000, 1000) == 1000, "e
 Check("backspace-detected", TypingPlan.PlayerDeleted("nidhog", "nidhogg"), "expected true");
 Check("backspace-not-ours", !TypingPlan.PlayerDeleted("nidhog", null), "expected false");
 Check("backspace-complete-word", !TypingPlan.PlayerDeleted("nidhogg", "nidhogg"), "expected false");
+
+// Prompt filter: only words this plugin can actually answer.
+Check("word-ascii", TypingPlan.IsTypeableWord("nidhogg"), "expected true");
+Check("word-accented", TypingPlan.IsTypeableWord("café"), "expected true");
+Check("word-punctuated", TypingPlan.IsTypeableWord("don't-stop!"), "expected true");
+Check("word-kana-skipped", !TypingPlan.IsTypeableWord("レッド"), "expected false");
+Check("word-kanji-skipped", !TypingPlan.IsTypeableWord("漢字"), "expected false");
+Check("word-empty-skipped", !TypingPlan.IsTypeableWord(""), "expected false");
 
 Console.WriteLine($"{checks - failures}/{checks} checks passed.");
 return failures == 0 ? 0 : 1;

@@ -81,7 +81,7 @@ internal static unsafe class GameState
             if (!labelShown && !masked) continue;
             var text = SeString.Parse(((AtkTextNode*)label)->NodeText.AsSpan()).TextValue.Trim();
             if (text.Length == 0 || text.Length > 160) continue;
-            if (!text.All(c => c is >= ' ' and <= '~' || char.IsLetter(c))) continue;
+            if (!TypingPlan.IsTypeableWord(text)) continue;
             prompts.Add(new Prompt(node->NodeId, text, masked,
                 node->ScreenX + node->Width * node->ScaleX / 2, node->ScreenY, node->ScaleX, null));
         }

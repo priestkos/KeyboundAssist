@@ -46,6 +46,12 @@ internal static class PromptMap
             if (float.IsFinite(distance))
                 result[pair.Prompt] = result[pair.Prompt] with { Distance = distance };
         }
+        // A label that matched no enemy still carries a distance proxy: a bigger label is nearer. This is
+        // the case XivType added the estimate for - a bound far boss otherwise outranks a close unbound
+        // enemy. Saturated labels (> ~24 yalms) give none and sort last.
+        for (var i = 0; i < result.Length; i++)
+            if (result[i].Distance == null && EstimateDistance(result[i].Scale) is { } estimate)
+                result[i] = result[i] with { Distance = estimate };
         return result;
     }
 }

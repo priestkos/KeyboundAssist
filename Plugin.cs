@@ -33,6 +33,7 @@ public sealed class Plugin : IDalamudPlugin
     private long nextFocusAt;
     private long nextErrorLog;
     private string? lastWritten;
+    private string? lastSeen;
     private string? currentTarget;
     private string? skipTarget;
     private long skipUntil;
@@ -94,7 +95,8 @@ public sealed class Plugin : IDalamudPlugin
                 Log.Info("[KeyboundAssist] status: " + status);
                 ChatGui.Print("[Keybound Assist] " + status);
                 ChatGui.Print($"[Keybound Assist] activity: {ActivityKeepAlive.Resets} timer resets, " +
-                              $"{ActivityKeepAlive.Failures} consecutive failures, last idle " +
+                              $"{ActivityKeepAlive.Failures} consecutive failures, duty agent " +
+                              $"{(ActivityKeepAlive.DedicatedOk ? "cleared" : "unavailable")}, last idle " +
                               $"{(float.IsNaN(ActivityKeepAlive.LastIdleSeconds) ? "unavailable" : ActivityKeepAlive.LastIdleSeconds.ToString("0.0") + "s")}.");
                 break;
             case "":
@@ -138,6 +140,12 @@ public sealed class Plugin : IDalamudPlugin
             return;
         }
 
+        var now = Environment.TickCount64;
+
+        // Runs before the input field is even looked at: the duty's timer keeps counting in the gaps
+        // between waves, which is exactly when nothing else in this plugin is doing work.
+        ActivityKeepAlive.Tick(now, configuration.KeepAlive);
+
         var addon = GameState.InputAddon(GameGui);
         var input = GameState.InputComponent(addon);
         var read = GameState.Read(addon, input);
@@ -147,8 +155,6 @@ public sealed class Plugin : IDalamudPlugin
             return;
         }
 
-        var now = Environment.TickCount64;
-
         // A wave transition still looks like an active duty, but nobody can type during one.
         if (Conditions[ConditionFlag.BetweenAreas] || Conditions[ConditionFlag.OccupiedInCutSceneEvent])
         {
@@ -156,12 +162,14 @@ public sealed class Plugin : IDalamudPlugin
             return;
         }
 
-        ActivityKeepAlive.Tick(now, configuration.KeepAlive);
-
         // A backspace has to be able to clear what the plugin typed: without this the next frame
         // writes the character straight back and the field can never be emptied by hand.
+        // Only a shrink from text this plugin has actually seen in the field counts as a backspace: a
+        // write that did not land leaves lastWritten ahead of the field and must not look like one.
+        var owned = lastWritten != null && lastWritten == lastSeen;
+        lastSeen = read.Value.Field;
         if (read.Value.Field.Length == 0) lastWritten = null;
-        if (TypingPlan.PlayerDeleted(read.Value.Field, lastWritten))
+        if (owned && TypingPlan.PlayerDeleted(read.Value.Field, lastWritten))
         {
             input->SetText("");
             skipTarget = currentTarget;
