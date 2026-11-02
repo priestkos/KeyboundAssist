@@ -179,30 +179,9 @@ public sealed class Plugin : IDalamudPlugin
         // and tests/ drives this same function.
         var outcome = TickPlan.Step(field, read.Value.Allowed, read.Value.Reason, prompts, state, now,
             configuration.Priority, configuration.IgnorePunctuation);
-        state = outcome.State;
-        status = outcome.Status;
 
-        if (outcome.Clear)
-        {
-            input->SetText("");
-            return;
-        }
-        if (outcome.Action != TickAction.Write) return;
-
-        // The player's Enter only reaches the field while it is the active text input.
-        if (!input->IsActive)
-        {
-            if (now < nextFocusAt) return;
-            nextFocusAt = now + 250;
-            if (!GameState.EnsureFocus(addon, input)) status = "Could not focus the activity input.";
-            return;
-        }
-
-        var writeAt = Environment.TickCount64;
-        if (writeAt < nextWriteAt) return;
-        nextWriteAt = writeAt + TypingPlan.DrawDelay(Random.Shared, configuration.CharDelayMinMs, configuration.CharDelayMaxMs);
-        var written = field + outcome.Next;
-        input->SetText(written);
-        state = state with { LastWritten = written, WriteSeen = false };
+        state = TickPlan.Apply(outcome, field, new NativeInputField(addon, input), now,
+            ref nextWriteAt, ref nextFocusAt, configuration.CharDelayMinMs, configuration.CharDelayMaxMs,
+            Random.Shared, out status);
     }
 }

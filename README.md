@@ -99,10 +99,10 @@ Pushes to `main` that change the plugin (not docs-only paths) cut a GitHub relea
 
 ## Tests
 
-The decision logic (`TypingPlan.cs`) and the label-to-enemy mapping (`PromptMap.cs`) carry no Dalamud or native dependency, so the harness compiles the same files into a console project and drives them with no game running: shortest-prompt choice, nearest-enemy ordering, prefix continuation, case and accent handling, text the plugin did not type, a prompt that vanishes mid-word, the typing lock, ambiguous and contested label-to-enemy matches, the saturated scale estimate, and the per-character delay draw (in range, varying, fixed when the ends are equal, swapped and out-of-range bounds tolerated, the 1000 ms cap both allowed and fixed), backspace detection, the prompt filter, punctuation stripping, barrier-word priority, the barrier line at three window heights, owned-prefix clearing, ambiguous/contested matches above the scale-estimate threshold, and the update loop itself - `TickPlan.Step`, the function every frame calls - driven over many frames: a barrier word typed to completion, a barrier word taking over a half-typed word, a barrier word sharing the typed prefix, nothing cleared while the duty prohibits typing, player-replaced text left alone, the last character deleted, a submitted word not mistaken for a deletion, and the skip window opening and closing.
+The decision logic (`TypingPlan.cs`) and the label-to-enemy mapping (`PromptMap.cs`) carry no Dalamud or native dependency, so the harness compiles the same files into a console project and drives them with no game running: shortest-prompt choice, nearest-enemy ordering, prefix continuation, case and accent handling, text the plugin did not type, a prompt that vanishes mid-word, the typing lock, ambiguous and contested label-to-enemy matches, the saturated scale estimate, and the per-character delay draw (in range, varying, fixed when the ends are equal, swapped and out-of-range bounds tolerated, the 1000 ms cap both allowed and fixed), backspace detection, the prompt filter, punctuation stripping, barrier-word priority, the barrier line at three window heights, owned-prefix clearing, ambiguous/contested matches above the scale-estimate threshold, and the update loop itself - `TickPlan.Step`, the function every frame calls - driven over many frames: a barrier word typed to completion, a barrier word taking over a half-typed word, a barrier word sharing the typed prefix, nothing cleared while the duty prohibits typing, player-replaced text left alone, the last character deleted, a submitted word not mistaken for a deletion, the skip window opening and closing, and the write path itself (`TickPlan.Apply`) against a recording field: a barrier word typed character by character through the setter, nothing written while the duty is locked, player text left untouched, the last character deleted, a submitted word followed by the next one, and focus requested before the first write.
 
 ```
-dotnet run --project tests/KeyboundAssist.Tests.csproj -c Release    # 68 checks
+dotnet run --project tests/KeyboundAssist.Tests.csproj -c Release    # 75 checks
 ```
 
 ## Limits
@@ -124,7 +124,8 @@ dotnet run --project tests/KeyboundAssist.Tests.csproj -c Release    # 68 checks
 Plugin.cs          entry point, command, per-frame tick, dispose
 GameState.cs       KTGInput / KTGEWord reads, permission, focus, actor projection
 PromptMap.cs       label→enemy matching and distance (pure, tested offline)
-TickPlan.cs        the per-frame decision the update loop applies (pure, tested offline)
+TickPlan.cs        the per-frame decision and its write, as pure functions (tested offline)
+NativeInputField.cs  the IInputField that decision writes through (the native component)
 TypingPlan.cs      pure decision logic (compiled by the test harness)
 Configuration.cs   enabled flag, character delay, target priority
 AssistWindow.cs    the window

@@ -262,5 +262,91 @@ var skipExpired = TickPlan.Step("", true, "Ready.", [P("bomb")], skipping.State,
     TargetPriority.ShortestPrompt, true);
 Check("loop-skip-expires", skipExpired.Action == TickAction.Write, skipExpired.ToString());
 
+// ---- The handler's write path, through the same TickPlan.Apply the plugin calls every frame. ----
+
+// A barrier word is typed character by character and never cleared on its own progress.
+var field = new FakeField();
+var liveState = new AssistState(null, false, null, null, 0);
+long nextWrite = 0, nextFocus = 0;
+var mirror = "";
+for (var frame = 0; frame < 12; frame++)
+{
+    var at = 1000 + frame * 500;
+    var tick = TickPlan.Step(mirror, true, "Ready.", barrierOnly, liveState, at,
+        TargetPriority.ShortestPrompt, true);
+    if (tick.Action == TickAction.None) break;
+    liveState = TickPlan.Apply(tick, mirror, field, at, ref nextWrite, ref nextFocus, 0, 0, new Random(7), out _);
+    mirror = tick.Clear ? "" : field.Writes[^1];
+}
+Check("handler-barrier-writes", string.Join(",", field.Writes) == "s,sh,shi,shie,shiel,shield",
+    string.Join(",", field.Writes));
+
+// Nothing is written while the duty prohibits typing.
+var lockedField = new FakeField();
+var lockedTick = TickPlan.Step("b", false, "Typing prohibited (3s).",
+    [P("bomb"), P("shield", null, 9, defense: true)], lockedPartial, 5000, TargetPriority.ShortestPrompt, true);
+TickPlan.Apply(lockedTick, "b", lockedField, 5000, ref nextWrite, ref nextFocus, 0, 0, new Random(7), out _);
+Check("handler-locked-no-write", lockedField.Writes.Count == 0, string.Join(",", lockedField.Writes));
+
+// Text the player replaced is never written over.
+var playerField = new FakeField();
+var playerTick = TickPlan.Step("my note", true, "Ready.", [P("bomb"), P("shield", null, 9, defense: true)],
+    replaced, 5000, TargetPriority.ShortestPrompt, true);
+TickPlan.Apply(playerTick, "my note", playerField, 5000, ref nextWrite, ref nextFocus, 0, 0, new Random(7), out _);
+Check("handler-player-text-untouched", playerField.Writes.Count == 0, string.Join(",", playerField.Writes));
+
+// Deleting the last character empties the field through the setter.
+var deleteField = new FakeField();
+var deleteTick = TickPlan.Step("", true, "Ready.", [P("x")], oneChar, 5000, TargetPriority.ShortestPrompt, true);
+var afterDelete = TickPlan.Apply(deleteTick, "", deleteField, 5000, ref nextWrite, ref nextFocus, 0, 0,
+    new Random(7), out _);
+Check("handler-last-char-clears",
+    deleteField.Writes.Count == 1 && deleteField.Writes[0] == "" && afterDelete.SkipTarget == "x",
+    string.Join(",", deleteField.Writes));
+
+// A submitted word leaves the field empty and the next word is typed, not skipped.
+var submitField = new FakeField();
+var submitTick = TickPlan.Step("", true, "Ready.", [P("next")], submitted, 5000,
+    TargetPriority.ShortestPrompt, true);
+TickPlan.Apply(submitTick, "", submitField, 5000, ref nextWrite, ref nextFocus, 0, 0, new Random(7), out _);
+Check("handler-submission-types-next", submitField.Writes.Count == 1 && submitField.Writes[0] == "n",
+    string.Join(",", submitField.Writes));
+
+// An inactive field is focused first and gets no text on that frame.
+var focusField = new FakeField { IsActive = false, FocusResult = true };
+var focusTick = TickPlan.Step("", true, "Ready.", [P("bomb")], new AssistState(null, false, null, null, 0),
+    5000, TargetPriority.ShortestPrompt, true);
+long focusWrite = 0, focusNext = 0;
+var focusedState = TickPlan.Apply(focusTick, "", focusField, 5000, ref focusWrite, ref focusNext, 0, 0,
+    new Random(7), out _);
+Check("handler-focus-before-write", focusField.Writes.Count == 0 && focusField.FocusCalls == 1,
+    $"{focusField.Writes.Count} writes, {focusField.FocusCalls} focuses");
+
+// Once focused, the same decision writes on the next frame.
+var secondTick = TickPlan.Step("", true, "Ready.", [P("bomb")], focusedState, 5300, TargetPriority.ShortestPrompt,
+    true);
+TickPlan.Apply(secondTick, "", focusField, 5300, ref focusWrite, ref focusNext, 0, 0, new Random(7), out _);
+Check("handler-writes-after-focus", focusField.Writes.Count == 1 && focusField.Writes[0] == "b",
+    string.Join(",", focusField.Writes));
+
 Console.WriteLine($"{checks - failures}/{checks} checks passed.");
 return failures == 0 ? 0 : 1;
+
+// Records every write the plugin would make, so the application step is executed rather than reviewed.
+sealed class FakeField : IInputField
+{
+    public bool IsActive { get; set; } = true;
+    public bool FocusResult { get; set; } = true;
+    public int FocusCalls;
+    public List<string> Writes { get; } = [];
+
+    public bool Focus()
+    {
+        FocusCalls++;
+        IsActive = FocusResult;
+        return FocusResult;
+    }
+
+    public void SetText(string text) => Writes.Add(text);
+}
+

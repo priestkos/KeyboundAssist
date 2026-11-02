@@ -13,6 +13,15 @@ internal readonly record struct TickOutcome(AssistState State, TickAction Action
     internal bool Clear => Action == TickAction.Clear;
 }
 
+// The one place a decision reaches the game. Production passes the native component; tests pass a fake
+// that records what was written, so the clear/write/focus sequence is executed rather than reviewed.
+internal interface IInputField
+{
+    bool IsActive { get; }
+    bool Focus();
+    void SetText(string text);
+}
+
 internal static class TickPlan
 {
     internal const int SkipMs = 3000;
@@ -96,4 +105,33 @@ internal static class TickPlan
     private static bool PreparedEqual(string a, string b, bool ignorePunctuation) =>
         string.Equals(TypingPlan.Prepared(a, ignorePunctuation), TypingPlan.Prepared(b, ignorePunctuation),
             StringComparison.OrdinalIgnoreCase);
+
+    // Applies one decision to the field: clear, or focus and then append a single character. Every write
+    // the plugin can make goes through here.
+    internal static AssistState Apply(TickOutcome outcome, string field, IInputField input, long now,
+        ref long nextWriteAt, ref long nextFocusAt, int minMs, int maxMs, Random random, out string status)
+    {
+        status = outcome.Status;
+        if (outcome.Clear)
+        {
+            input.SetText("");
+            return outcome.State;
+        }
+        if (outcome.Action != TickAction.Write) return outcome.State;
+
+        // The player's Enter only reaches the field while it is the active text input.
+        if (!input.IsActive)
+        {
+            if (now < nextFocusAt) return outcome.State;
+            nextFocusAt = now + 250;
+            if (!input.Focus()) status = "Could not focus the activity input.";
+            return outcome.State;
+        }
+
+        if (now < nextWriteAt) return outcome.State;
+        nextWriteAt = now + TypingPlan.DrawDelay(random, minMs, maxMs);
+        var written = field + outcome.Next;
+        input.SetText(written);
+        return outcome.State with { LastWritten = written, WriteSeen = false };
+    }
 }
