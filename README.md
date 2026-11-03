@@ -32,7 +32,7 @@ A short **mock-up** walkthrough (not real gameplay) cross-fades through the same
 - **Finishes what you started** — if the field already holds the beginning of a prompt, it completes that word; case is ignored and accented letters are typed as their base letter.
 - **Reads through Cryptic Communications** — while an enemy's word is veiled under static, the prompt is read from the label the static covers, so the word still gets typed. It is only read while that enemy's static tiles are actually on screen.
 - **Backspace clears what it typed** — a single Backspace over the plugin's own characters empties the field and skips that word for a moment instead of writing it straight back.
-- **Keeps the duty's inactivity timer alive** — a direct write into the field is not input, so the game still counts you as idle and expels you; the plugin clears the same counters a physical key would, and still sends no keystroke.
+- **Keeps the duty's inactivity timer alive** — a direct write into the field is not input, so the game still counts you as idle and expels you; when you turn it on (it is off by default), the plugin clears the same counters a physical key would, and still sends no keystroke.
 - **Never sends a keystroke** — it writes into the activity's text component in process. Your Enter is the only key pressed during a word, so nothing can land in chat.
 - **Answers barrier words first** — a player defence prompt is drawn at the barrier line at the bottom of the screen, and it outranks both targeting modes; if one appears while a normal word is only half typed, the partial text is dropped and the barrier word takes over.
 - **Stops before the locking cast, not after** — Dynamic Sensory Jammer and Cursed Gaze are read from the enemy cast bar, so typing pauses for the cast and for 3.5 s after it resolves, instead of waiting for the field's own lock to engage.
@@ -73,7 +73,7 @@ Each frame the plugin reads the field, picks the next step, and writes at most o
 
 - **Fill prompts for me** — the master switch; it is on when the plugin first loads.
 - **Delay per character** — a range in milliseconds, 0–1000, default **30–60**. Every character draws a fresh delay inside that range, so the typing has no fixed cadence; set both ends to the same value for a fixed delay. 0 is one character per frame. The duty scores per submitted word, so the delay only exists to keep the field readable.
-- **Keep the activity timer alive** — on by default. Clears the duty's own inactivity counters every 3 s so the expulsion timer never fires; turn it off to leave that entirely to your real input.
+- **Keep the activity timer alive** — off by default. Clears the duty's own inactivity counters every 3 s so the expulsion timer never fires; left off, that is entirely up to your real input.
 - **Ignore punctuation** — on by default; strips the punctuation the duty ignores before typing. Turn it off if words ever stop matching.
 - **Target** — `Shortest prompt` or `Nearest enemy`. A prompt with no resolvable enemy always sorts last in nearest mode.
 
