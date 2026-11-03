@@ -119,12 +119,15 @@ Check("map-scale-proxy", proxy[0].Distance is { } pd && Math.Abs(pd - 12.73f) < 
 
 // Per-character delay: a fresh draw inside the range, equal ends fixed, bad bounds tolerated.
 var rng = new Random(1234);
-var draws = Enumerable.Range(0, 400).Select(_ => TypingPlan.DrawDelay(rng, 30, 60)).ToArray();
-Check("delay-in-range", draws.All(d => d is >= 30 and <= 60), $"min={draws.Min()} max={draws.Max()}");
+var draws = Enumerable.Range(0, 400).Select(_ => TypingPlan.DrawDelay(rng, 150, 300)).ToArray();
+Check("delay-in-range", draws.All(d => d is >= 150 and <= 300), $"min={draws.Min()} max={draws.Max()}");
 Check("delay-varies", draws.Distinct().Count() > 1, $"distinct={draws.Distinct().Count()}");
-Check("delay-fixed-when-equal", TypingPlan.DrawDelay(rng, 40, 40) == 40, "expected 40");
-Check("delay-swapped-bounds", TypingPlan.DrawDelay(rng, 60, 30) is >= 30 and <= 60, "expected 30..60");
-Check("delay-clamps-out-of-range", TypingPlan.DrawDelay(rng, -20, 10) is >= 0 and <= 10, "expected 0..10");
+Check("delay-fixed-when-equal", TypingPlan.DrawDelay(rng, 200, 200) == 200, "expected 200");
+Check("delay-swapped-bounds", TypingPlan.DrawDelay(rng, 300, 150) is >= 150 and <= 300, "expected 150..300");
+// The 130 ms floor holds for any config, including the old 30-60 default and 0.
+Check("delay-floor-old-default", TypingPlan.DrawDelay(rng, 30, 60) == TypingPlan.MinDelayMs, "expected 130");
+Check("delay-floor-zero", TypingPlan.DrawDelay(rng, -20, 0) == TypingPlan.MinDelayMs, "expected 130");
+Check("delay-floor-straddles", Enumerable.Range(0, 200).All(_ => TypingPlan.DrawDelay(rng, 100, 140) is >= 130 and <= 140), "expected 130..140");
 Check("delay-allows-the-cap", TypingPlan.DrawDelay(rng, 900, 1500) is >= 900 and <= 1000, "expected 900..1000");
 Check("delay-at-cap-is-fixed", TypingPlan.DrawDelay(rng, 1000, 1000) == 1000, "expected 1000");
 
@@ -261,6 +264,33 @@ Check("loop-skip-window", skipping.Action == TickAction.None, skipping.ToString(
 var skipExpired = TickPlan.Step("", true, "Ready.", [P("bomb")], skipping.State, 7000,
     TargetPriority.ShortestPrompt, true);
 Check("loop-skip-expires", skipExpired.Action == TickAction.Write, skipExpired.ToString());
+
+// The enemy carrying a half-typed word dies: our partial text is cleared once it has stayed orphaned
+// for OrphanMs, never sooner, and never while typing is locked.
+var halfTyped = new AssistState("explo", true, "explosion", null, 0);
+var orphan1 = TickPlan.Step("explo", true, "Ready.", [P("bomb")], halfTyped, 10_000, TargetPriority.ShortestPrompt, true);
+Check("orphan-grace-no-clear", !orphan1.Clear && orphan1.State.OrphanSince == 10_000, orphan1.ToString());
+var orphan2 = TickPlan.Step("explo", true, "Ready.", [P("bomb")], orphan1.State, 10_000 + TickPlan.OrphanMs - 1, TargetPriority.ShortestPrompt, true);
+Check("orphan-grace-holds", !orphan2.Clear, orphan2.ToString());
+var orphan3 = TickPlan.Step("explo", true, "Ready.", [P("bomb")], orphan2.State, 10_000 + TickPlan.OrphanMs, TargetPriority.ShortestPrompt, true);
+Check("orphan-cleared", orphan3.Clear && orphan3.State.LastWritten == null && orphan3.State.OrphanSince == null, orphan3.ToString());
+var orphanLocked = TickPlan.Step("explo", false, "Typing prohibited (2s).", [P("bomb")], orphan2.State, 20_000, TargetPriority.ShortestPrompt, true);
+Check("orphan-locked-no-clear", !orphanLocked.Clear && orphanLocked.State.OrphanSince == 10_000, orphanLocked.ToString());
+// A finished word whose enemy died is cleared too: Enter would only submit a dead word.
+var deadWhole = TickPlan.Step("explosion", true, "Ready.", [], new AssistState("explosion", true, "explosion", null, 0, 1_000), 1_000 + TickPlan.OrphanMs, TargetPriority.ShortestPrompt, true);
+Check("orphan-finished-cleared", deadWhole.Clear, deadWhole.ToString());
+// A label that drops for a frame and comes back resets the grace, and typing carries on.
+var flicker = TickPlan.Step("explo", true, "Ready.", [P("explosion")], orphan2.State, 10_300, TargetPriority.ShortestPrompt, true);
+Check("orphan-flicker-resets", !flicker.Clear && flicker.Action == TickAction.Write && flicker.State.OrphanSince == null, flicker.ToString());
+// Another prompt that the text still leads into is not an orphan: it is continued.
+var shared = TickPlan.Step("bo", true, "Ready.", [P("bomber")], new AssistState("bo", true, "bomb", null, 0, 1_000), 5_000, TargetPriority.ShortestPrompt, true);
+Check("orphan-shared-prefix-continues", !shared.Clear && shared.Action == TickAction.Write && shared.State.CurrentTarget == "bomber", shared.ToString());
+// Text the player typed is never an orphan of ours.
+var playerOrphan = TickPlan.Step("my note", true, "Ready.", [P("bomb")], new AssistState("expl", true, "explosion", null, 0, 1_000), 9_000, TargetPriority.ShortestPrompt, true);
+Check("orphan-player-text-kept", !playerOrphan.Clear, playerOrphan.ToString());
+// A just-submitted word whose prompt vanishes a frame before the field empties is not cleared.
+var submitRace = TickPlan.Step("bomb", true, "Ready.", [], new AssistState("bomb", true, "bomb", null, 0), 30_000, TargetPriority.ShortestPrompt, true);
+Check("orphan-submit-race-no-clear", !submitRace.Clear, submitRace.ToString());
 
 // ---- The handler's write path, through the same TickPlan.Apply the plugin calls every frame. ----
 
@@ -465,6 +495,38 @@ RunFrame(new FrameContext(false, "", false, "", true, "Ready.", [P("bomb")], Cha
     new AssistState(null, false, null, null, 0), chatField, 5000);
 Check("gate-chat-focused-no-focus", chatField.FocusCalls == 0 && chatField.Writes.Count == 0,
     $"{chatField.FocusCalls} focuses, {chatField.Writes.Count} writes");
+
+// End to end at the new pace: 60 fps frames through Frame.Run with the 150-300 ms default. A long word's
+// enemy dies after a few characters; the leftover is cleared and the next word is typed from scratch.
+{
+    var pace = new FrameSettings(TargetPriority.ShortestPrompt, true, 150, 300);
+    var simField = new FakeField();
+    var simState = new AssistState(null, false, null, null, 0);
+    long simWrite = 0, simFocus = 0;
+    var simText = "";
+    var simRng = new Random(42);
+    var killedAt = -1L;
+    var clearedAt = -1L;
+    var gaps = new List<long>();
+    var lastWriteAt = -1L;
+    for (long at = 100_000; at < 112_000; at += 16)
+    {
+        // "constellation" is alive until 5 characters are in, then only "bomb" is left on screen.
+        if (killedAt < 0 && simText.Length >= 5) killedAt = at;
+        Prompt[] shown = killedAt < 0 ? [P("constellation", null, 1)] : [P("bomb", null, 3)];
+        var before = simField.Writes.Count;
+        simState = Frame.Run(new FrameContext(false, "", false, simText, true, "Ready.", shown), pace, simState,
+            simField, at, ref simWrite, ref simFocus, simRng).State;
+        if (simField.Writes.Count == before) continue;
+        simText = simField.Writes[^1];
+        if (simText.Length == 0 && clearedAt < 0) clearedAt = at;
+        else if (simText.Length > 0) { if (lastWriteAt >= 0 && simText.Length > 1) gaps.Add(at - lastWriteAt); lastWriteAt = at; }
+    }
+    Check("sim-dead-word-cleared", clearedAt > 0 && clearedAt - killedAt >= TickPlan.OrphanMs && clearedAt - killedAt < TickPlan.OrphanMs + 50,
+        $"killed {killedAt}, cleared {clearedAt}");
+    Check("sim-next-word-typed", simText == "bomb", $"field ended as '{simText}'");
+    Check("sim-pace-floor", gaps.Count > 0 && gaps.All(g => g >= TypingPlan.MinDelayMs), $"min gap {(gaps.Count > 0 ? gaps.Min() : -1)} ms");
+}
 
 Console.WriteLine($"{checks - failures}/{checks} checks passed.");
 return failures == 0 ? 0 : 1;

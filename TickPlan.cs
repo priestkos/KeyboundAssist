@@ -6,7 +6,8 @@ internal enum TickAction { None, Write, Clear }
 // native dependency. tests/ drives this exact function, so the order of the permission gate, the
 // ownership proof and the clears is executed rather than reviewed.
 internal readonly record struct AssistState(
-    string? LastWritten, bool WriteSeen, string? CurrentTarget, string? SkipTarget, long SkipUntil);
+    string? LastWritten, bool WriteSeen, string? CurrentTarget, string? SkipTarget, long SkipUntil,
+    long? OrphanSince = null);
 
 internal readonly record struct TickOutcome(AssistState State, TickAction Action, char Next, string Status)
 {
@@ -25,6 +26,10 @@ internal interface IInputField
 internal static class TickPlan
 {
     internal const int SkipMs = 3000;
+
+    // How long our partial text must have no prompt left to finish it before it is cleared: long enough to
+    // ride out a label that drops for a frame or two, short next to one 130 ms character.
+    internal const int OrphanMs = 400;
 
     internal static TickOutcome Step(string field, bool allowed, string reason, Prompt[] prompts,
         AssistState state, long now, TargetPriority priority, bool ignorePunctuation)
@@ -76,6 +81,17 @@ internal static class TickPlan
             }
         }
 
+        // The enemy carrying the word died mid-word: no prompt on screen continues the text we wrote, so it
+        // would sit in the field forever. Clear it - only our own text, only while typing is allowed, and only
+        // once it has stayed orphaned for OrphanMs. A prompt sharing the prefix is not an orphan; it continues.
+        var owned = field.Length > 0 && writeSeen && lastWritten != null &&
+            string.Equals(field, lastWritten, StringComparison.OrdinalIgnoreCase);
+        var orphaned = owned && TypingPlan.Choose(prompts, field, priority, ignorePunctuation) == null;
+        long? orphanSince = orphaned ? state.OrphanSince ?? now : null;
+        if (orphaned && allowed && now - orphanSince >= OrphanMs)
+            return new TickOutcome(new AssistState(null, false, null, skipTarget, skipUntil),
+                TickAction.Clear, '\0', $"Cleared '{field}' - its enemy is gone.");
+
         var step = TypingPlan.Next(field, pool, priority, ignorePunctuation, allowed, reason);
 
         // A barrier word outranks the word in progress, but the field is the authority: when what is typed
@@ -93,7 +109,7 @@ internal static class TickPlan
                 TickAction.Clear, '\0', "Dropping the partial word for a barrier prompt.");
 
         var nextState = new AssistState(lastWritten, writeSeen,
-            step.Kind is StepKind.Typing or StepKind.Ready ? step.Target : null, skipTarget, skipUntil);
+            step.Kind is StepKind.Typing or StepKind.Ready ? step.Target : null, skipTarget, skipUntil, orphanSince);
         return step.Kind == StepKind.Typing
             ? new TickOutcome(nextState, TickAction.Write, step.Next, step.Status)
             : new TickOutcome(nextState, TickAction.None, '\0', step.Status);
