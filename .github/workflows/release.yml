@@ -132,6 +132,10 @@ jobs:
           "version=$nextVersion" >> $env:GITHUB_OUTPUT
           exit 0
 
+      - name: Run offline checks
+        if: steps.auto_release.outputs.skip != 'true'
+        run: dotnet run --project tests/KeyboundAssist.Tests.csproj -c Release
+
       - name: Build KeyboundAssist
         if: steps.auto_release.outputs.skip != 'true'
         shell: pwsh
