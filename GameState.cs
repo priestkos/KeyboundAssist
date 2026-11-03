@@ -4,6 +4,7 @@ using Dalamud.Game.ClientState.Objects.Types;
 using Dalamud.Bindings.ImGui;
 using Dalamud.Game.Text.SeStringHandling;
 using Dalamud.Plugin.Services;
+using FFXIVClientStructs.FFXIV.Client.UI;
 using FFXIVClientStructs.FFXIV.Component.GUI;
 
 namespace KeyboundAssist;
@@ -147,6 +148,13 @@ internal static unsafe class GameState
         if (input->CollisionNode == null) return false;
         addon->Focus();
         return addon->SetFocusNode((AtkResNode*)input->CollisionNode);
+    }
+
+    // AddonChatLog.TextInput is the chat line; IsActive (AtkComponentInputBase +0xC0) is its focus flag.
+    internal static bool ChatFocused(IGameGui gui)
+    {
+        var chat = gui.GetAddonByName<AddonChatLog>("ChatLog");
+        return chat != null && chat->TextInput != null && chat->TextInput->IsActive;
     }
 
     private static bool Shown(AtkResNode* node)

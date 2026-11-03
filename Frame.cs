@@ -4,7 +4,7 @@ namespace KeyboundAssist;
 // can be executed without a client.
 internal readonly record struct FrameContext(
     bool Halted, string HaltReason, bool SceneChanging,
-    string Field, bool Allowed, string Reason, Prompt[] Prompts);
+    string Field, bool Allowed, string Reason, Prompt[] Prompts, bool ChatFocused = false);
 
 internal readonly record struct FrameSettings(
     TargetPriority Priority, bool IgnorePunctuation, int MinDelayMs, int MaxDelayMs);
@@ -23,7 +23,7 @@ internal static class Frame
         var outcome = TickPlan.Step(context.Field, context.Allowed, context.Reason, context.Prompts, state, now,
             settings.Priority, settings.IgnorePunctuation);
         var next = TickPlan.Apply(outcome, context.Field, input, now, ref nextWriteAt, ref nextFocusAt,
-            settings.MinDelayMs, settings.MaxDelayMs, random, out var status);
+            settings.MinDelayMs, settings.MaxDelayMs, random, out var status, context.ChatFocused);
         return (next, status);
     }
 }

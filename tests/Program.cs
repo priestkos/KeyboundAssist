@@ -445,6 +445,27 @@ Check("audit-F6-no-guessed-distance",
     ambiguousScaled[0].Distance == null && contestedScaled[0].Distance == null && contestedScaled[1].Distance == null,
     $"{ambiguousScaled[0].Distance}/{contestedScaled[0].Distance}/{contestedScaled[1].Distance}");
 
+// The barrier only drops text this plugin wrote: the player's own "b", "bo" towards a prompt stays.
+var typedByPlayer = TickPlan.Step("b", true, "Ready.", [P("bomb")], new AssistState(null, false, null, null, 0),
+    5000, TargetPriority.ShortestPrompt, true);
+var playerBarrier = TickPlan.Step("bo", true, "Ready.", [P("bomb"), P("shield", null, 9, defense: true)],
+    typedByPlayer.State, 5020, TargetPriority.ShortestPrompt, true);
+Check("loop-barrier-keeps-player-prefix", !playerBarrier.Clear, playerBarrier.ToString());
+
+// A submitted full word whose twin is still on another enemy is a submission, not a deletion.
+var duplicate = TickPlan.Step("", true, "Ready.", [P("bomb", null, 2)], new AssistState("bomb", true, "bomb", null, 0),
+    5000, TargetPriority.ShortestPrompt, true);
+Check("loop-duplicate-submission-no-skip",
+    !duplicate.Clear && duplicate.State.SkipTarget == null && duplicate.Action == TickAction.Write && duplicate.Next == 'b',
+    duplicate.ToString());
+
+// While the game's chat input has focus, a pending write never pulls focus back to the duty field.
+var chatField = new FakeField { IsActive = false };
+RunFrame(new FrameContext(false, "", false, "", true, "Ready.", [P("bomb")], ChatFocused: true),
+    new AssistState(null, false, null, null, 0), chatField, 5000);
+Check("gate-chat-focused-no-focus", chatField.FocusCalls == 0 && chatField.Writes.Count == 0,
+    $"{chatField.FocusCalls} focuses, {chatField.Writes.Count} writes");
+
 Console.WriteLine($"{checks - failures}/{checks} checks passed.");
 return failures == 0 ? 0 : 1;
 

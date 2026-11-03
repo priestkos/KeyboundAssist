@@ -50,8 +50,12 @@ internal static class TickPlan
         var currentTarget = state.CurrentTarget;
         var wordShown = currentTarget != null &&
             pool.Any(p => string.Equals(p.Text, currentTarget, StringComparison.OrdinalIgnoreCase));
+        // One Backspace cannot empty a field holding a whole multi-character word we wrote: that is the
+        // Enter, even when a twin of the word is still on another enemy. A one-character word stays ambiguous.
+        var submittedWhole = lastWritten != null && lastWritten.Length > 1 && currentTarget != null &&
+            PreparedEqual(lastWritten, currentTarget, ignorePunctuation);
         var deleted = writeSeen && lastWritten != null &&
-            (field.Length == 0 ? wordShown : TypingPlan.PlayerDeleted(field, lastWritten));
+            (field.Length == 0 ? wordShown && !submittedWhole : TypingPlan.PlayerDeleted(field, lastWritten));
         if (field.Length == 0)
         {
             lastWritten = null;
@@ -81,6 +85,7 @@ internal static class TickPlan
         var barrier = BestBarrier(pool, ignorePunctuation);
         if (allowed && currentTarget != null && field.Length > 0 && barrier != null &&
             !string.Equals(barrier, currentTarget, StringComparison.OrdinalIgnoreCase) &&
+            writeSeen && lastWritten != null && TypingPlan.IsOwnedPrefix(field, lastWritten, ignorePunctuation) &&
             TypingPlan.IsOwnedPrefix(field, currentTarget, ignorePunctuation) &&
             !TypingPlan.IsOwnedPrefix(field, barrier, ignorePunctuation) &&
             !PreparedEqual(field, currentTarget, ignorePunctuation))
@@ -109,7 +114,8 @@ internal static class TickPlan
     // Applies one decision to the field: clear, or focus and then append a single character. Every write
     // the plugin can make goes through here.
     internal static AssistState Apply(TickOutcome outcome, string field, IInputField input, long now,
-        ref long nextWriteAt, ref long nextFocusAt, int minMs, int maxMs, Random random, out string status)
+        ref long nextWriteAt, ref long nextFocusAt, int minMs, int maxMs, Random random, out string status,
+        bool chatFocused = false)
     {
         status = outcome.Status;
         if (outcome.Clear)
@@ -122,6 +128,12 @@ internal static class TickPlan
         // The player's Enter only reaches the field while it is the active text input.
         if (!input.IsActive)
         {
+            // Pulling focus now would steal the chat line the player is typing in.
+            if (chatFocused)
+            {
+                status = "Waiting - the chat input is in use.";
+                return outcome.State;
+            }
             if (now < nextFocusAt) return outcome.State;
             nextFocusAt = now + 250;
             if (!input.Focus()) status = "Could not focus the activity input.";

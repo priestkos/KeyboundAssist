@@ -161,7 +161,8 @@ public sealed class Plugin : IDalamudPlugin
             CastBar.Blocked(GameGui, now, out var holdReason), holdReason,
             Conditions[ConditionFlag.BetweenAreas] || Conditions[ConditionFlag.OccupiedInCutSceneEvent],
             read.Value.Field, read.Value.Allowed, read.Value.Reason,
-            GameState.Prompts(GameGui, Objects, player?.Position ?? default, player != null));
+            GameState.Prompts(GameGui, Objects, player?.Position ?? default, player != null),
+            GameState.ChatFocused(GameGui));
 
         var settings = new FrameSettings(configuration.Priority, configuration.IgnorePunctuation,
             configuration.CharDelayMinMs, configuration.CharDelayMaxMs);
