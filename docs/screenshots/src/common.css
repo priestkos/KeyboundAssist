@@ -104,8 +104,45 @@ body {
   accent-color: #5a9fd4;
 }
 
+.text-disabled {
+  margin: -4px 0 12px 26px;
+  font-size: 11px;
+  line-height: 1.35;
+  color: #777;
+}
+
 .slider-row {
   margin-bottom: 14px;
+}
+
+.delay-range-row {
+  margin-bottom: 8px;
+}
+
+.delay-range-row .label {
+  margin-bottom: 6px;
+  color: #ccc;
+}
+
+.delay-range-values {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-variant-numeric: tabular-nums;
+}
+
+.delay-range-values input[type="number"] {
+  width: 58px;
+  padding: 3px 6px;
+  font-size: 13px;
+  color: #8ec8ff;
+  background: #2a2a32;
+  border: 1px solid #555;
+  border-radius: 3px;
+}
+
+.delay-range-values .sep {
+  color: #888;
 }
 
 .slider-row .label {

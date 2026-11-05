@@ -9,7 +9,7 @@ const outDir = path.resolve(__dirname, "..");
 const framesDir = path.join(__dirname, "frames");
 
 const FPS = 30;
-const DURATION_SEC = 21;
+const DURATION_SEC = 15;
 const FRAME_COUNT = FPS * DURATION_SEC;
 
 const htmlPath = path.join(__dirname, "walkthrough.html");

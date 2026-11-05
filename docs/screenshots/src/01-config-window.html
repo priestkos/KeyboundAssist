@@ -6,8 +6,9 @@
     <link rel="stylesheet" href="common.css" />
     <style>
       .dalamud-window {
-        top: 140px;
-        left: 80px;
+        top: 100px;
+        left: 72px;
+        min-width: 420px;
       }
     </style>
   </head>
@@ -15,7 +16,7 @@
     <div class="game-backdrop"></div>
     <div class="duty-title">Keybound Brawler · MOCK SCENE</div>
     <div class="mockup-banner">Mock-up</div>
-    <div class="scene-label">Settings window — Fill prompts, delay, target priority, live status</div>
+    <div class="scene-label">Settings window — switches, delay range, target, live status</div>
 
     <div class="dalamud-window">
       <div class="dalamud-title">Keybound Assist</div>
@@ -25,13 +26,27 @@
           Fill prompts for me
         </label>
 
-        <div class="slider-row">
+        <label class="row">
+          <input type="checkbox" class="checkbox" disabled />
+          Keep the activity timer alive
+        </label>
+        <p class="text-disabled">Clears the duty's own inactivity counters. The plugin still sends no keys.</p>
+
+        <label class="row">
+          <input type="checkbox" class="checkbox" checked disabled />
+          Ignore punctuation
+        </label>
+        <p class="text-disabled">Types "dontstop" for "don't-stop!". Turn it off if words stop matching.</p>
+
+        <div class="delay-range-row">
           <div class="label">Delay per character (ms)</div>
-          <div class="slider-track">
-            <input type="range" min="0" max="300" value="40" disabled />
-            <span class="slider-value">40</span>
+          <div class="delay-range-values">
+            <input type="number" value="150" min="130" max="1000" disabled />
+            <span class="sep">—</span>
+            <input type="number" value="300" min="130" max="1000" disabled />
           </div>
         </div>
+        <p class="text-disabled">Each character draws a new delay in this range. Equal ends = fixed.</p>
 
         <div class="combo-row">
           <div class="label">Target</div>
@@ -48,10 +63,6 @@
         <div class="separator"></div>
         <p class="status-line">Typing 'slash'.</p>
       </div>
-    </div>
-
-    <div class="callout" style="top: 160px; right: 80px">
-      Open with <strong>/keyboundassist</strong> or the plugin tray. Master switch, character delay (0–300 ms), and target mode live here.
     </div>
   </body>
 </html>
