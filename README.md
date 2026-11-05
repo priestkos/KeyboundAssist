@@ -14,7 +14,7 @@ These images are **mock-ups** (HTML rendered to PNG). They are not real in-game 
 
 | | |
 | --- | --- |
-| ![Config window mock-up](docs/screenshots/01-config-window.png) | **Settings window** — master switch, delay range (0–1000 ms), target combo (shortest / nearest), help text, and live status line. |
+| ![Config window mock-up](docs/screenshots/01-config-window.png) | **Settings window** — master switch, keep-alive and punctuation toggles, delay range (130–1000 ms, default 150–300), target combo, help text, and live status line. |
 | ![In-duty typing mock-up](docs/screenshots/02-duty-typing.png) | **Prompt fill** — enemy prompt labels and the duty input field with partial typing; status shows the active target word. |
 | ![Cryptic & nearest mock-up](docs/screenshots/03-cryptic-nearest.png) | **Cryptic Communications & nearest target** — static tiles over a veiled label, nearest-enemy targeting, typing in progress. |
 | ![Chat commands mock-up](docs/screenshots/04-chat-commands.png) | **Commands** — `/keyboundassist status` output in chat, `on`/`off` toggles (no chat echo), and usage text for unknown args. |
@@ -22,9 +22,9 @@ These images are **mock-ups** (HTML rendered to PNG). They are not real in-game 
 
 ## Mock-up video
 
-A short **mock-up** walkthrough (not real gameplay) cross-fades through the same scenes with on-screen captions. The gold **Mock-up** label stays visible for the whole clip.
+A short **mock-up** walkthrough (not real gameplay) cross-fades through the same scenes with on-screen beat labels and bottom captions. The gold **Mock-up** label stays visible for the whole clip.
 
-- [mockup-walkthrough.mp4](docs/videos/mockup-walkthrough.mp4) (H.264, 1280×720, ~21 s)
+- [mockup-walkthrough.mp4](docs/videos/mockup-walkthrough.mp4) (H.264, 1280×720, ~15 s)
 - [mockup-walkthrough.gif](docs/videos/mockup-walkthrough.gif) (preview)
 
 ## What it does
