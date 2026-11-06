@@ -37,14 +37,23 @@ internal static class TypingPlan
         if (matches.Length == 0) return null;
         // An unmatched prompt has no distance and sorts last, so nearest-enemy falls back to the
         // shortest prompt instead of guessing.
-        var ordered = priority == TargetPriority.NearestEnemy
-            ? matches.OrderByDescending(p => p.Prompt.Defense)
-                .ThenBy(p => p.Prompt.Distance ?? float.MaxValue)
-                .ThenBy(p => p.Text.Length).ThenBy(p => p.Prompt.NodeId)
-            : matches.OrderByDescending(p => p.Prompt.Defense)
-                .ThenBy(p => p.Text.Length).ThenBy(p => p.Prompt.NodeId);
+        var defenseFirst = matches.OrderByDescending(p => p.Prompt.Defense);
+        var ordered = priority switch
+        {
+            TargetPriority.NearestEnemy => defenseFirst.ThenBy(p => p.Prompt.Distance ?? float.MaxValue),
+            // Within a tier the enemy lowest on screen - closest to the barrier - goes first.
+            TargetPriority.Threat => defenseFirst.ThenBy(p => Threat(p.Prompt)).ThenByDescending(p => p.Prompt.ScreenY),
+            _ => defenseFirst,
+        };
+        ordered = ordered.ThenBy(p => p.Text.Length).ThenBy(p => p.Prompt.NodeId);
         return ordered.First().Prompt;
     }
+
+    // AutoKeyboundBrawler's tiers below the barrier word (which already outranks every mode): a Cactuar on
+    // Needles, other casting adds, idle Cactuars, regular enemies, then the boss - casting before idle.
+    internal static int Threat(Prompt p) =>
+        p.NodeId == PromptMap.BossSlot ? (p.Casting ? 6 : 7)
+        : p.Needles ? 1 : p.Casting ? 2 : p.Cactuar ? 3 : 4;
 
     // A fresh draw per character, so the typing has no fixed cadence. Equal bounds mean a fixed
     // delay; a hand-edited config with min > max is swapped rather than throwing out of Random.Next.

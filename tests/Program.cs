@@ -523,6 +523,63 @@ Check("gate-chat-focused-no-focus", chatField.FocusCalls == 0 && chatField.Write
     Check("sim-pace-floor", gaps.Count > 0 && gaps.All(g => g >= TypingPlan.MinDelayMs), $"min gap {(gaps.Count > 0 ? gaps.Min() : -1)} ms");
 }
 
+// ---- Threat order (AutoKeyboundBrawler's tiers) and the cast-bar mapping that feeds it. ----
+HashSet<string> cactuarSheet = new(StringComparer.OrdinalIgnoreCase) { "1,000 Needles" };
+Prompt T(uint node, string text, float y) => new(node, text, false, 0, y, 1f, null);
+var threatPool = PromptMap.WithCasts(
+    [T(2, "airbuster", 300), T(5, "grunt", 400), T(6, "sweeper", 350), T(7, "cactuar", 200), T(8, "bomb", 450)],
+    [(6u, "Burst"), (2u, "Big Bomber")], cactuarSheet);
+Check("threat-boss-flag", threatPool[0].Casting && !threatPool[0].Cactuar && !threatPool[0].Needles, threatPool[0].ToString());
+Check("threat-casting-add", threatPool[2].Casting && !threatPool[2].Needles, threatPool[2].ToString());
+Check("threat-cactuar-idle", threatPool[3].Cactuar && !threatPool[3].Needles, threatPool[3].ToString());
+Check("threat-casting-first", TypingPlan.Choose(threatPool, "", TargetPriority.Threat)?.Text == "sweeper",
+    TypingPlan.Choose(threatPool, "", TargetPriority.Threat)?.Text ?? "null");
+Check("threat-shortest-unchanged", TypingPlan.Choose(threatPool, "", TargetPriority.ShortestPrompt)?.Text == "bomb",
+    TypingPlan.Choose(threatPool, "", TargetPriority.ShortestPrompt)?.Text ?? "null");
+var noCasts = PromptMap.WithCasts([T(2, "airbuster", 300), T(5, "grunt", 400), T(8, "bomb", 450), T(7, "cactuar", 200)], [], cactuarSheet);
+Check("threat-cactuar-before-adds", TypingPlan.Choose(noCasts, "", TargetPriority.Threat)?.Text == "cactuar",
+    TypingPlan.Choose(noCasts, "", TargetPriority.Threat)?.Text ?? "null");
+var addsOnly = PromptMap.WithCasts([T(2, "airbuster", 600), T(5, "grunt", 400), T(8, "bomb", 450)], [], cactuarSheet);
+Check("threat-lowest-add-first", TypingPlan.Choose(addsOnly, "", TargetPriority.Threat)?.Text == "bomb",
+    TypingPlan.Choose(addsOnly, "", TargetPriority.Threat)?.Text ?? "null");
+var bossOnly = PromptMap.WithCasts([T(2, "airbuster", 600)], [], cactuarSheet);
+Check("threat-boss-last-but-chosen", TypingPlan.Choose(bossOnly, "", TargetPriority.Threat)?.Text == "airbuster", "expected the boss");
+// Needles on the Cactuar's own bar beats a casting add; a Needles bar on no word slot still marks Cactuars.
+var needles = PromptMap.WithCasts([T(6, "sweeper", 350), T(7, "1,000 Needles", 200)], [(6u, "Burst"), (7u, "??? Needles")], cactuarSheet);
+Check("threat-needles-slot", needles[1].Needles && TypingPlan.Choose(needles, "", TargetPriority.Threat)?.Text == "1,000 Needles",
+    needles[1].ToString());
+var unslotted = PromptMap.WithCasts([T(6, "sweeper", 350), T(7, "cactuar", 200)], [(6u, "Burst"), (40u, "??? Needles")], cactuarSheet);
+Check("threat-needles-unslotted", unslotted[1].Needles && TypingPlan.Choose(unslotted, "", TargetPriority.Threat)?.Text == "cactuar",
+    unslotted[1].ToString());
+Check("threat-boss-never-cactuar", !PromptMap.WithCasts([T(2, "gigantender", 0)], [(9u, "Needles")], cactuarSheet)[0].Needles, "boss marked");
+// A barrier word still outranks every threat tier.
+var threatBarrier = PromptMap.WithCasts([T(7, "cactuar", 200), new(9, "shield me now", false, 0, 900, 1f, null, true)],
+    [(7u, "??? Needles")], cactuarSheet);
+Check("threat-barrier-first", TypingPlan.Choose(threatBarrier, "", TargetPriority.Threat)?.Text == "shield me now", "expected barrier");
+
+// ---- Wins from achievement progress, and words seen. ----
+Check("wins-iv-read", Stats.WinsFromProgress(4073, 37, 100) == 37, "expected 37");
+Check("wins-iv-capped-read", Stats.WinsFromProgress(4073, 100, 100) == 100, "expected 100");
+Check("wins-lower-tier-uncapped", Stats.WinsFromProgress(4071, 7, 10) == 7, "expected 7");
+Check("wins-lower-tier-capped-ignored", Stats.WinsFromProgress(4071, 10, 10) == null, "expected null");
+Check("wins-other-achievement-ignored", Stats.WinsFromProgress(1, 3, 10) == null, "expected null");
+Check("wins-garbage-ignored", Stats.WinsFromProgress(4073, 500, 100) == null && Stats.WinsFromProgress(4073, 0, 0) == null, "expected null");
+
+var seenWords = new Dictionary<string, int>();
+var shownNow = new Dictionary<(uint, string), long>();
+Check("words-first-counts", Stats.Observe(seenWords, shownNow, [P("bomb", node: 1), P("grunt", node: 2)], 0) &&
+    seenWords["bomb"] == 1 && seenWords["grunt"] == 1, string.Join(",", seenWords));
+for (var f = 1; f <= 60; f++) Stats.Observe(seenWords, shownNow, [P("bomb", node: 1)], f * 16);
+Check("words-held-counts-once", seenWords["bomb"] == 1, seenWords["bomb"].ToString());
+Stats.Observe(seenWords, shownNow, [], 1000);
+Stats.Observe(seenWords, shownNow, [P("bomb", node: 1)], 1100);
+Check("words-blink-not-recounted", seenWords["bomb"] == 1, seenWords["bomb"].ToString());
+Stats.Observe(seenWords, shownNow, [P("bomb", node: 1)], 1100 + Stats.RecountMs + 1);
+Check("words-reappearance-counts", seenWords["bomb"] == 2, seenWords["bomb"].ToString());
+Stats.Observe(seenWords, shownNow, [P("bomb", node: 1), P("bomb", node: 3)], 2200);
+Check("words-second-slot-counts", seenWords["bomb"] == 3, seenWords["bomb"].ToString());
+Check("words-gone-pruned", !shownNow.ContainsKey((2u, "grunt")), "grunt still tracked");
+
 Console.WriteLine($"{checks - failures}/{checks} checks passed.");
 return failures == 0 ? 0 : 1;
 

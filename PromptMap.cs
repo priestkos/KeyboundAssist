@@ -2,16 +2,43 @@ using System.Numerics;
 
 namespace KeyboundAssist;
 
-internal enum TargetPriority { ShortestPrompt, NearestEnemy }
+internal enum TargetPriority { ShortestPrompt, NearestEnemy, Threat }
 
 // One enemy prompt. No Dalamud types, so tests/ compiles this file with the decision logic.
 internal readonly record struct Prompt(uint NodeId, string Text, bool Masked,
-    float ScreenX, float ScreenY, float Scale, float? Distance, bool Defense = false);
+    float ScreenX, float ScreenY, float Scale, float? Distance, bool Defense = false,
+    bool Casting = false, bool Needles = false, bool Cactuar = false);
 
 internal readonly record struct ActorScreen(uint Entity, Vector2 Screen, Vector3 World);
 
 internal static class PromptMap
 {
+    // AutoKeyboundBrawler's threat model (KTGStateReader.GetTargetPriority): KTGEWord slot 2 is always the boss, an
+    // enemy cast bar component carries the same node id as that enemy's word slot, and a Cactuar casting Needles
+    // is the emergency. Both slot facts come from that plugin alone.
+    internal const uint BossSlot = 2;
+    private static readonly string[] CactuarRoots = ["cactuar", "tender"];
+
+    internal static bool IsCactuar(string text, IReadOnlySet<string> cactuarWords) =>
+        cactuarWords.Contains(text) || CactuarRoots.Any(r => text.Contains(r, StringComparison.OrdinalIgnoreCase));
+
+    internal static bool IsNeedles(string spell) => spell.Contains("needle", StringComparison.OrdinalIgnoreCase);
+
+    internal static Prompt[] WithCasts(Prompt[] prompts, IReadOnlyList<(uint Slot, string Spell)> casts,
+        IReadOnlySet<string> cactuarWords)
+    {
+        var needlesUp = casts.Any(c => c.Slot != BossSlot && IsNeedles(c.Spell));
+        return prompts.Select(p =>
+        {
+            var own = casts.Where(c => c.Slot == p.NodeId).ToArray();
+            var cactuar = p.NodeId != BossSlot && IsCactuar(p.Text, cactuarWords);
+            // A Needles bar that lines up with no word slot still marks every Cactuar, as AutoKeyboundBrawler does.
+            var needles = p.NodeId != BossSlot &&
+                (own.Any(c => IsNeedles(c.Spell)) || (cactuar && (needlesUp || own.Length > 0)));
+            return p with { Casting = own.Length > 0, Needles = needles, Cactuar = cactuar };
+        }).ToArray();
+    }
+
     // A player defence prompt is drawn at the barrier line at the bottom of the screen (live geometry
     // from AutoKeyboundBrawler: ScreenY ~734 of 1080 there, marching adds stop around 680), expressed as
     // a fraction so it holds at any window size rather than only the 1080p it was measured at.

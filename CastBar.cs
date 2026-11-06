@@ -18,14 +18,23 @@ internal static unsafe class CastBar
     private static long holdUntil;
     private static string heldSpell = "";
 
+    // This frame's spell labels by cast bar slot, for the threat order. Node 5 is the cast timer and nodes 2/3 the
+    // "Interrupted!" banner (AutoKeyboundBrawler's map), so they are not spells.
+    internal static (uint Slot, string Spell)[] Casts { get; private set; } = [];
+
     // True while a locking cast is up, and for a few seconds after it resolves.
     internal static bool Blocked(IGameGui gui, long now, out string reason)
     {
-        foreach (var label in Labels(gui))
+        var labels = Labels(gui);
+        Casts = labels.Where(l => l.Slot != 0 && l.Node is not (2 or 3 or 5) && l.Text.Any(char.IsLetter) &&
+                                  !l.Text.Equals("Interrupted!", StringComparison.OrdinalIgnoreCase) &&
+                                  !l.Text.Equals("Casting", StringComparison.OrdinalIgnoreCase))
+            .Select(l => (l.Slot, l.Text)).ToArray();
+        foreach (var label in labels)
         {
-            if (!Halt(label)) continue;
+            if (!Halt(label.Text)) continue;
             holdUntil = now + HoldAfterCastMs;
-            heldSpell = label;
+            heldSpell = label.Text;
             break;
         }
 
@@ -42,15 +51,16 @@ internal static unsafe class CastBar
     {
         holdUntil = 0;
         heldSpell = "";
+        Casts = [];
     }
 
     private static bool Halt(string label) =>
         label.Contains("Dynamic Sensory Jammer", StringComparison.OrdinalIgnoreCase) ||
         label.Contains("Cursed Gaze", StringComparison.OrdinalIgnoreCase);
 
-    private static List<string> Labels(IGameGui gui)
+    private static List<(uint Slot, uint Node, string Text)> Labels(IGameGui gui)
     {
-        var labels = new List<string>();
+        var labels = new List<(uint Slot, uint Node, string Text)>();
         var addon = gui.GetAddonByName<AtkUnitBase>("CastBarEnemy");
         if (addon == null || !addon->IsVisible || !addon->IsReady)
         {
@@ -58,11 +68,13 @@ internal static unsafe class CastBar
             addon = gui.GetAddonByName<AtkUnitBase>("KTGEnemyCastBar");
             if (addon == null || !addon->IsVisible || !addon->IsReady) return labels;
         }
-        Walk(&addon->UldManager, labels, [], 0);
+        Walk(&addon->UldManager, labels, [], 0, 0);
         return labels;
     }
 
-    private static void Walk(AtkUldManager* manager, List<string> labels, HashSet<nint> visited, int depth)
+    // Slot is the top-level component a label sits in: one per enemy cast bar.
+    private static void Walk(AtkUldManager* manager, List<(uint Slot, uint Node, string Text)> labels,
+        HashSet<nint> visited, int depth, uint slot)
     {
         if (manager == null || manager->NodeList == null || depth > MaxDepth || visited.Count >= MaxNodes) return;
         for (var i = 0; i < Math.Min((int)manager->NodeListCount, MaxNodes); i++)
@@ -72,12 +84,13 @@ internal static unsafe class CastBar
             if (node->Type == NodeType.Text)
             {
                 var text = SeString.Parse(((AtkTextNode*)node)->NodeText.AsSpan()).TextValue.Trim();
-                if (text.Length is > 2 and <= 96) labels.Add(text);
+                if (text.Length is > 2 and <= 96) labels.Add((slot, node->NodeId, text));
             }
             else if ((int)node->Type >= 1000)
             {
                 var component = ((AtkComponentNode*)node)->Component;
-                if (component != null) Walk(&component->UldManager, labels, visited, depth + 1);
+                if (component != null)
+                    Walk(&component->UldManager, labels, visited, depth + 1, depth == 0 ? node->NodeId : slot);
             }
         }
     }

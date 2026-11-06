@@ -15,6 +15,7 @@
     <Compile Include="../PromptMap.cs" Link="PromptMap.cs" />
     <Compile Include="../TickPlan.cs" Link="TickPlan.cs" />
     <Compile Include="../Frame.cs" Link="Frame.cs" />
+    <Compile Include="../Stats.cs" Link="Stats.cs" />
   </ItemGroup>
 
 </Project>

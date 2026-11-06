@@ -30,7 +30,8 @@ A short **mock-up** walkthrough (not real gameplay) cross-fades through the same
 ## What it does
 
 - **Types the prompt for you** — the chosen enemy prompt is written into the duty's own text field one character at a time, the plugin then stops and leaves the word sitting there for your Enter.
-- **Picks the target** — shortest visible prompt (default) or the nearest enemy; nearest falls back to the shortest prompt whenever the screen positions are ambiguous rather than guessing.
+- **Picks the target** — shortest visible prompt (default), the nearest enemy, or **Threat**: AutoKeyboundBrawler's kill order — a Cactuar casting Needles, then other casting adds, idle Cactuars, regular enemies, the casting boss and the idle boss, the lowest enemy on screen first within each tier. Nearest falls back to the shortest prompt whenever the screen positions are ambiguous rather than guessing.
+- **Counts wins and words** — the clear count is read from the Masterstroke achievements (I–IV, ids 4070–4073), with a manual count to use instead when it diverges; every prompt word seen in the duty is listed with how often it appeared.
 - **Finishes what you started** — if the field already holds the beginning of a prompt, it completes that word; case is ignored and accented letters are typed as their base letter.
 - **Reads through Cryptic Communications** — while an enemy's word is veiled under static, the prompt is read from the label the static covers, so the word still gets typed. It is only read while that enemy's static tiles are actually on screen.
 - **Backspace clears what it typed** — a single Backspace over the plugin's own characters empties the field and skips that word for a moment instead of writing it straight back.
@@ -45,7 +46,7 @@ A short **mock-up** walkthrough (not real gameplay) cross-fades through the same
 ### What it is not meant to do
 
 - **It does not submit.** Enter is yours. There is no auto-submit option, and a word stays in the field until you press it.
-- **It does not play the duty.** No movement, no registration or queueing, no run looping, no score recording, no frame-rate changes.
+- **It does not play the duty.** No movement, no registration or queueing, no run looping, no score recording (it keeps only the win count and the words seen), no frame-rate changes.
 - **It is not an AFK bot.** It never types into a field it did not start, never clears your text, and stops dead whenever the duty locks input.
 - **It does not guess.** When two enemies project to nearly the same screen column, that prompt gets no distance and is never chosen for being "nearest".
 - **It does not touch chat.** It has no keyboard route at all, so there is nothing to misdirect into a chat line.
@@ -61,6 +62,8 @@ The duty exposes both ends of the loop as game UI, so no OCR and no screen captu
 | Nearest enemy | label screen X/Y matched against projected `BattleNpc` positions (48 px × scale, 12 px ambiguity margin) |
 | Answer field | `KTGInput` addon — text input component at node 7 |
 | Typing permission | `KTGInput` `AtkValues[2]` (allowed) and `AtkValues[4]` (lock seconds), plus the component's own `Enabled` flag |
+| Threat order | `CastBarEnemy` spell labels by component node id, matched to the `KTGEWord` slot with the same id; slot 2 is the boss; Cactuar words from `KTGTypeWordTextData` rows plus a `cactuar`/`tender` name match |
+| Wins | `Achievement` progress (`ProgressAchievementId`/`ProgressCurrent`/`ProgressMax`) for Masterstroke I–IV |
 
 Each frame the plugin reads the field, picks the next step, and writes at most one character (`SetText`), so the field itself is always the authority on what has been typed. It only activates the field (`Focus` + `SetFocusNode`) when it is not already the active text input, so your Enter always reaches it. Outside territory 1359 it does nothing. All reads resolve their addon pointers on the frame that uses them; nothing is cached across frames.
 
@@ -76,9 +79,11 @@ Each frame the plugin reads the field, picks the next step, and writes at most o
 
 - **Fill prompts for me** — the master switch; it is on when the plugin first loads.
 - **Delay per character** — a range in milliseconds, 130–1000, default **150–300**. Every character draws a fresh delay inside that range, so the typing has no fixed cadence; set both ends to the same value for a fixed delay. 130 ms (about 90 WPM) is the floor: nothing in the settings or a hand-edited config types faster, so an older config at 30–60 now runs at a fixed 130.
-- **Target** — `Shortest prompt` or `Nearest enemy`. A prompt with no resolvable enemy always sorts last in nearest mode.
+- **Target** — `Shortest prompt`, `Nearest enemy` or `Threat`. A prompt with no resolvable enemy always sorts last in nearest mode. A barrier word outranks every mode.
+- **Wins** — read from the game whenever it holds Masterstroke progress: press **Sync from achievements** (one progress request, at most every 10 s, the same request the Achievements window sends), or open Masterstroke IV in the Achievements window yourself. **Use a manual count** shows your own number instead, starting from the achievement one; the achievement reading keeps updating underneath.
+- **Words seen** — every prompt word read in the duty with its count, most frequent first. A word counts once per appearance on an enemy, not once per frame. Counted whether or not filling is on; saved when you leave the duty.
 
-The plugin does not persist anything else. It is only active inside the duty.
+Wins and words seen are stored in the plugin's config; nothing else is persisted. Typing only happens inside the duty.
 
 ## Build
 
@@ -100,16 +105,18 @@ Pushes to `main` that change the plugin (not docs-only paths) cut a GitHub relea
 
 ## Tests
 
-The decision logic (`TypingPlan.cs`) and the label-to-enemy mapping (`PromptMap.cs`) carry no Dalamud or native dependency, so the harness compiles the same files into a console project and drives them with no game running: shortest-prompt choice, nearest-enemy ordering, prefix continuation, case and accent handling, text the plugin did not type, a prompt that vanishes mid-word, the typing lock, ambiguous and contested label-to-enemy matches, the saturated scale estimate, and the per-character delay draw (in range, varying, fixed when the ends are equal, swapped and out-of-range bounds tolerated, the 1000 ms cap both allowed and fixed), backspace detection, the prompt filter, punctuation typed as drawn, barrier-word priority, the barrier line at three window heights, owned-prefix clearing, ambiguous/contested matches above the scale-estimate threshold, and the update loop itself - `TickPlan.Step`, the function every frame calls - driven over many frames: a barrier word typed to completion, a barrier word taking over a half-typed word, a barrier word sharing the typed prefix, nothing cleared while the duty prohibits typing, player-replaced text left alone, the last character deleted, a submitted word not mistaken for a deletion, the skip window opening and closing, and the write path itself (`TickPlan.Apply`) against a recording field: a barrier word typed character by character through the setter, nothing written while the duty is locked, player text left untouched, the last character deleted, a submitted word followed by the next one, focus requested before the first write, the cast-bar and scene gates, and the review's twelve audit checks (three controls, F1-F6) run through `Frame.Run` - the entry point `Plugin.Tick` calls - instead of being inspected.
+The decision logic (`TypingPlan.cs`) and the label-to-enemy mapping (`PromptMap.cs`) carry no Dalamud or native dependency, so the harness compiles the same files into a console project and drives them with no game running: shortest-prompt choice, nearest-enemy ordering, prefix continuation, case and accent handling, text the plugin did not type, a prompt that vanishes mid-word, the typing lock, ambiguous and contested label-to-enemy matches, the saturated scale estimate, and the per-character delay draw (in range, varying, fixed when the ends are equal, swapped and out-of-range bounds tolerated, the 1000 ms cap both allowed and fixed), backspace detection, the prompt filter, punctuation typed as drawn, barrier-word priority, the barrier line at three window heights, owned-prefix clearing, ambiguous/contested matches above the scale-estimate threshold, the Threat tiers and cast-bar mapping (Needles by slot and unslotted, casting adds, idle Cactuars, lowest-first adds, the boss last, barrier words still first), the Masterstroke readings (uncapped, capped, foreign and garbage), words-seen counting (once per appearance, blinks not recounted, a second slot counted), and the update loop itself - `TickPlan.Step`, the function every frame calls - driven over many frames: a barrier word typed to completion, a barrier word taking over a half-typed word, a barrier word sharing the typed prefix, nothing cleared while the duty prohibits typing, player-replaced text left alone, the last character deleted, a submitted word not mistaken for a deletion, the skip window opening and closing, and the write path itself (`TickPlan.Apply`) against a recording field: a barrier word typed character by character through the setter, nothing written while the duty is locked, player text left untouched, the last character deleted, a submitted word followed by the next one, focus requested before the first write, the cast-bar and scene gates, and the review's twelve audit checks (three controls, F1-F6) run through `Frame.Run` - the entry point `Plugin.Tick` calls - instead of being inspected.
 
 ```
-dotnet run --project tests/KeyboundAssist.Tests.csproj -c Release    # 106 checks
+dotnet run --project tests/KeyboundAssist.Tests.csproj -c Release    # 130 checks
 ```
 
 ## Limits
 
 - **Not verified in game.** The offline checks cover the decision and mapping logic only. The native reads and the write path come from three independently live-validated plugins (XivType, Keybound Pilot, AutoKeyboundBrawler) but have not been exercised on this client yet; the first real run is the test.
 - The barrier line is a fraction of the window (700/1080, the row AutoKeyboundBrawler measured on 1080p), and the 3.5 s hold after a locking cast come from that plugin's live notes rather than from measurement on this client — if a barrier word is never picked, those are the constants to revisit.
+- The Threat order rests on two facts from AutoKeyboundBrawler alone: that `KTGEWord` slot 2 is the boss, and that an enemy's cast bar carries the same node id as its word slot. If either is wrong the order is off but nothing else is — the lock gates do not use it. `/keyboundassist status` prints the casts it reads with their slots. AutoKeyboundBrawler's wait-for-the-next-Cactuar-word hold during Needles is not copied: the plugin keeps typing the next-best word.
+- Masterstroke IV counts to 100 (its sheet maximum), so past 100 clears the achievement reading stops moving — that is what the manual count is for. A lower tier read at its own maximum is ignored, since it only says "at least".
 - The pre-cast hold matches the two spell names in English, so on a non-English client only the duty's own lock applies, and that one engages late.
 - The activity keep-alive is always on in the duty and has no switch; it zeroes memory the game owns: the client's `InputTimerModule` counters and the duty agent's own idle pair, gated on the agent's HUD pointer matching. The 2-minute duty kick and 10-minute client kick it targets are AutoKeyboundBrawler's documented thresholds, not measured here. `/keyboundassist status` prints how many resets it has made, the consecutive-failure count and the last idle reading, so a wrong layout shows up as failures rather than silent writes.
 - **If the duty keeps the submitted word in the field**, the plugin waits rather than deleting it — clear the field yourself (Backspace) and it resumes. This is why it never clears text silently.
@@ -129,7 +136,8 @@ TickPlan.cs        the per-frame decision and its write, as pure functions (test
 Frame.cs           one frame: gates, decision, write - the entry point Plugin.Tick calls (tested offline)
 NativeInputField.cs  the IInputField that decision writes through (the native component)
 TypingPlan.cs      pure decision logic (compiled by the test harness)
-Configuration.cs   enabled flag, character delay, target priority
+Stats.cs           win reading from achievement progress and words-seen counting (pure, tested offline)
+Configuration.cs   enabled flag, character delay, target priority, wins, words seen
 AssistWindow.cs    the window
-tests/             offline harness for TypingPlan.cs, PromptMap.cs, TickPlan.cs and Frame.cs
+tests/             offline harness for TypingPlan.cs, PromptMap.cs, TickPlan.cs, Frame.cs and Stats.cs
 ```
