@@ -31,13 +31,8 @@ internal static unsafe class ActivityKeepAlive
         failures = 0;
     }
 
-    internal static void Tick(long now, bool active)
+    internal static void Tick(long now)
     {
-        if (!active)
-        {
-            next = 0;
-            return;
-        }
         // Three failures in a row means the layout moved; stop poking memory and say so.
         if (Stopped || now < next) return;
         next = now + IntervalMs;

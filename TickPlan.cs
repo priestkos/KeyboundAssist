@@ -32,7 +32,7 @@ internal static class TickPlan
     internal const int OrphanMs = 400;
 
     internal static TickOutcome Step(string field, bool allowed, string reason, Prompt[] prompts,
-        AssistState state, long now, TargetPriority priority, bool ignorePunctuation)
+        AssistState state, long now, TargetPriority priority)
     {
         var pool = prompts;
         var skipTarget = state.SkipTarget;
@@ -58,7 +58,7 @@ internal static class TickPlan
         // One Backspace cannot empty a field holding a whole multi-character word we wrote: that is the
         // Enter, even when a twin of the word is still on another enemy. A one-character word stays ambiguous.
         var submittedWhole = lastWritten != null && lastWritten.Length > 1 && currentTarget != null &&
-            PreparedEqual(lastWritten, currentTarget, ignorePunctuation);
+            PreparedEqual(lastWritten, currentTarget);
         var deleted = writeSeen && lastWritten != null &&
             (field.Length == 0 ? wordShown && !submittedWhole : TypingPlan.PlayerDeleted(field, lastWritten));
         if (field.Length == 0)
@@ -86,25 +86,25 @@ internal static class TickPlan
         // once it has stayed orphaned for OrphanMs. A prompt sharing the prefix is not an orphan; it continues.
         var owned = field.Length > 0 && writeSeen && lastWritten != null &&
             string.Equals(field, lastWritten, StringComparison.OrdinalIgnoreCase);
-        var orphaned = owned && TypingPlan.Choose(prompts, field, priority, ignorePunctuation) == null;
+        var orphaned = owned && TypingPlan.Choose(prompts, field, priority) == null;
         long? orphanSince = orphaned ? state.OrphanSince ?? now : null;
         if (orphaned && allowed && now - orphanSince >= OrphanMs)
             return new TickOutcome(new AssistState(null, false, null, skipTarget, skipUntil),
                 TickAction.Clear, '\0', $"Cleared '{field}' - its enemy is gone.");
 
-        var step = TypingPlan.Next(field, pool, priority, ignorePunctuation, allowed, reason);
+        var step = TypingPlan.Next(field, pool, priority, allowed, reason);
 
         // A barrier word outranks the word in progress, but the field is the authority: when what is typed
         // can still lead into the barrier word, the plan simply continues into it. When it cannot, the
         // partial word is dropped - but only text this plugin wrote, only while typing is allowed, and
         // never a finished word, which is one Enter away from being submitted.
-        var barrier = BestBarrier(pool, ignorePunctuation);
+        var barrier = BestBarrier(pool);
         if (allowed && currentTarget != null && field.Length > 0 && barrier != null &&
             !string.Equals(barrier, currentTarget, StringComparison.OrdinalIgnoreCase) &&
-            writeSeen && lastWritten != null && TypingPlan.IsOwnedPrefix(field, lastWritten, ignorePunctuation) &&
-            TypingPlan.IsOwnedPrefix(field, currentTarget, ignorePunctuation) &&
-            !TypingPlan.IsOwnedPrefix(field, barrier, ignorePunctuation) &&
-            !PreparedEqual(field, currentTarget, ignorePunctuation))
+            writeSeen && lastWritten != null && TypingPlan.IsOwnedPrefix(field, lastWritten) &&
+            TypingPlan.IsOwnedPrefix(field, currentTarget) &&
+            !TypingPlan.IsOwnedPrefix(field, barrier) &&
+            !PreparedEqual(field, currentTarget))
             return new TickOutcome(new AssistState(null, false, null, skipTarget, skipUntil),
                 TickAction.Clear, '\0', "Dropping the partial word for a barrier prompt.");
 
@@ -116,15 +116,15 @@ internal static class TickPlan
     }
 
     // The barrier word the plan would answer first: the shortest, as TypingPlan.Choose ranks it.
-    private static string? BestBarrier(Prompt[] pool, bool ignorePunctuation) =>
+    private static string? BestBarrier(Prompt[] pool) =>
         pool.Where(p => p.Defense)
-            .OrderBy(p => TypingPlan.Prepared(p.Text, ignorePunctuation).Length)
+            .OrderBy(p => TypingPlan.Typeable(p.Text).Length)
             .ThenBy(p => p.NodeId)
             .Select(p => p.Text)
             .FirstOrDefault();
 
-    private static bool PreparedEqual(string a, string b, bool ignorePunctuation) =>
-        string.Equals(TypingPlan.Prepared(a, ignorePunctuation), TypingPlan.Prepared(b, ignorePunctuation),
+    private static bool PreparedEqual(string a, string b) =>
+        string.Equals(TypingPlan.Typeable(a), TypingPlan.Typeable(b),
             StringComparison.OrdinalIgnoreCase);
 
     // Applies one decision to the field: clear, or focus and then append a single character. Every write

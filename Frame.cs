@@ -7,7 +7,7 @@ internal readonly record struct FrameContext(
     string Field, bool Allowed, string Reason, Prompt[] Prompts, bool ChatFocused = false);
 
 internal readonly record struct FrameSettings(
-    TargetPriority Priority, bool IgnorePunctuation, int MinDelayMs, int MaxDelayMs);
+    TargetPriority Priority, int MinDelayMs, int MaxDelayMs);
 
 internal static class Frame
 {
@@ -21,7 +21,7 @@ internal static class Frame
         if (context.SceneChanging) return (state, "Waiting - the duty is changing scenes.");
 
         var outcome = TickPlan.Step(context.Field, context.Allowed, context.Reason, context.Prompts, state, now,
-            settings.Priority, settings.IgnorePunctuation);
+            settings.Priority);
         var next = TickPlan.Apply(outcome, context.Field, input, now, ref nextWriteAt, ref nextFocusAt,
             settings.MinDelayMs, settings.MaxDelayMs, random, out var status, context.ChatFocused);
         return (next, status);

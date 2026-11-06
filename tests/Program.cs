@@ -20,8 +20,8 @@ Prompt P(string text, float? distance = null, uint node = 0, bool defense = fals
 Prompt Pm(float x, float y, float scale, uint node) => new(node, "w" + node, false, x, y, scale, null);
 
 Step Next(string field, Prompt[] prompts, TargetPriority priority = TargetPriority.ShortestPrompt,
-    bool allowed = true, string reason = "prohibited", bool ignorePunctuation = true) =>
-    TypingPlan.Next(field, prompts, priority, ignorePunctuation, allowed, reason);
+    bool allowed = true, string reason = "prohibited") =>
+    TypingPlan.Next(field, prompts, priority, allowed, reason);
 
 // Empty field: pick the shortest prompt and start it.
 var step = Next("", W("nidhogg", "ifrit", "bomb"));
@@ -144,19 +144,14 @@ Check("word-kana-skipped", !TypingPlan.IsTypeableWord("レッド"), "expected fa
 Check("word-kanji-skipped", !TypingPlan.IsTypeableWord("漢字"), "expected false");
 Check("word-empty-skipped", !TypingPlan.IsTypeableWord(""), "expected false");
 
-// Punctuation the duty ignores is dropped before comparing and typing.
+// Punctuation is always typed exactly as drawn.
 Check("punct-first-char", Next("", [P("don't-stop!")]).Next == 'd', "expected 'd'");
-Check("punct-ready", Next("dontstop", [P("don't-stop!")]).Kind == StepKind.Ready, "expected ready");
-Check("punct-exact-mode",
-    Next("dont", [P("don't-stop!")], ignorePunctuation: false).Kind == StepKind.Waiting, "expected waiting");
-Check("punct-prepared", TypingPlan.Prepared("a b1-c!", true) == "a b1c", TypingPlan.Prepared("a b1-c!", true));
-
-// A prompt that opens with punctuation must still start on a letter, and a prompt that is nothing but
-// punctuation can never be answered.
+Check("punct-typed", Next("don", [P("don't-stop!")]).Next == '\'', "expected the apostrophe");
+Check("punct-ready", Next("don't-stop!", [P("don't-stop!")]).Kind == StepKind.Ready, "expected ready");
+Check("punct-stripped-rejected", Next("dont", [P("don't-stop!")]).Kind == StepKind.Waiting, "expected waiting");
 step = Next("", [P("'ello")]);
-Check("punct-leading-first-char", step.Next == 'e', $"expected 'e', got '{step.Next}'");
-Check("punct-only-skipped", Next("", [P("!!!")]).Kind == StepKind.Waiting, "expected waiting");
-Check("punct-only-beside-real", Next("", [P("!!!"), P("real")]).Target == "real", "expected real");
+Check("punct-leading-first-char", step.Next == '\'', $"expected the apostrophe, got '{step.Next}'");
+Check("punct-only-typed", Next("", [P("!!!")]).Next == '!', "expected '!'");
 
 // A barrier word outranks the configured priority even when it is longer than everything else.
 Prompt[] barrier = [P("alpha"), P("longer defense line!", 5f, 9, defense: true)];
@@ -191,9 +186,10 @@ Check("barrier-word-completes", completes && built == "shield" && Next(built, on
 Check("accent-first-char", Next("", [P("éclair")]).Next == 'e', Next("", [P("éclair")]).ToString());
 
 // Ownership: only a prefix of the target can be text the plugin wrote.
-Check("owned-prefix-yes", TypingPlan.IsOwnedPrefix("b", "bomb", true), "expected owned");
-Check("owned-prefix-no", !TypingPlan.IsOwnedPrefix("my note", "bomb", true), "expected not owned");
-Check("owned-prefix-punct", TypingPlan.IsOwnedPrefix("dont", "don't-stop!", true), "expected owned");
+Check("owned-prefix-yes", TypingPlan.IsOwnedPrefix("b", "bomb"), "expected owned");
+Check("owned-prefix-no", !TypingPlan.IsOwnedPrefix("my note", "bomb"), "expected not owned");
+Check("owned-prefix-punct", TypingPlan.IsOwnedPrefix("don'", "don't-stop!"), "expected owned");
+Check("owned-prefix-stripped", !TypingPlan.IsOwnedPrefix("dont", "don't-stop!"), "expected not owned");
 
 // ---- The update loop itself, driven through the same TickPlan.Step the plugin calls every frame. ----
 
@@ -205,7 +201,7 @@ var clears = 0;
 for (var frame = 0; frame < 12; frame++)
 {
     var outcome = TickPlan.Step(typedSoFar, true, "Ready.", barrierOnly, state, 1000 + frame * 20,
-        TargetPriority.ShortestPrompt, true);
+        TargetPriority.ShortestPrompt);
     state = outcome.State;
     if (outcome.Clear) { clears++; typedSoFar = ""; continue; }
     if (outcome.Action != TickAction.Write) break;
@@ -217,79 +213,79 @@ Check("loop-barrier-completes", clears == 0 && typedSoFar == "shield", $"'{typed
 // F2: nothing is cleared while the duty prohibits typing - neither the takeover nor the backspace.
 var lockedPartial = new AssistState("b", true, "bomb", null, 0);
 var locked = TickPlan.Step("b", false, "Typing prohibited (3s).",
-    [P("bomb"), P("shield", null, 9, defense: true)], lockedPartial, 5000, TargetPriority.ShortestPrompt, true);
+    [P("bomb"), P("shield", null, 9, defense: true)], lockedPartial, 5000, TargetPriority.ShortestPrompt);
 Check("loop-locked-takeover-no-clear", !locked.Clear && locked.Action == TickAction.None, locked.ToString());
 
 var lockedDeleted = new AssistState("bomb", true, "bomb", null, 0);
 var lockedDel = TickPlan.Step("bom", false, "Typing prohibited (3s).", [P("bomb")], lockedDeleted, 5000,
-    TargetPriority.ShortestPrompt, true);
+    TargetPriority.ShortestPrompt);
 Check("loop-locked-backspace-no-clear", !lockedDel.Clear && lockedDel.Action == TickAction.None,
     lockedDel.ToString());
 
 // F3: text the player put there is never cleared, even when a barrier word is waiting.
 var replaced = new AssistState("b", true, "bomb", null, 0);
 var kept = TickPlan.Step("my note", true, "Ready.", [P("bomb"), P("shield", null, 9, defense: true)],
-    replaced, 5000, TargetPriority.ShortestPrompt, true);
+    replaced, 5000, TargetPriority.ShortestPrompt);
 Check("loop-player-text-kept", !kept.Clear && kept.Action != TickAction.Write, kept.ToString());
 
 // F1's other half: the same barrier does take over a normal word that is only half typed.
 var midWord = new AssistState("bo", true, "bomb", null, 0);
 var preempt = TickPlan.Step("bo", true, "Ready.", [P("bomb"), P("shield", null, 9, defense: true)], midWord,
-    5000, TargetPriority.ShortestPrompt, true);
+    5000, TargetPriority.ShortestPrompt);
 Check("loop-barrier-preempts", preempt.Clear, preempt.ToString());
 
 // ...but a barrier word the typed text can still lead into is continued, not thrown away.
 var sharedPrefix = TickPlan.Step("s", true, "Ready.", [P("sundae"), P("shield", null, 9, defense: true)],
-    new AssistState("s", true, "sundae", null, 0), 5000, TargetPriority.ShortestPrompt, true);
+    new AssistState("s", true, "sundae", null, 0), 5000, TargetPriority.ShortestPrompt);
 Check("loop-barrier-shares-prefix", !sharedPrefix.Clear && sharedPrefix.State.CurrentTarget == "shield",
     sharedPrefix.ToString());
 
 // F5: deleting the last remaining character of a one-character prompt clears and skips it.
 var oneChar = new AssistState("x", true, "x", null, 0);
-var lastChar = TickPlan.Step("", true, "Ready.", [P("x")], oneChar, 5000, TargetPriority.ShortestPrompt, true);
+var lastChar = TickPlan.Step("", true, "Ready.", [P("x")], oneChar, 5000, TargetPriority.ShortestPrompt);
 Check("loop-last-char-delete-skips", lastChar.Clear && lastChar.State.SkipTarget == "x", lastChar.ToString());
 
 // A submitted word empties the field too; that is not a deletion and must skip nothing.
 var submitted = new AssistState("bomb", true, "bomb", null, 0);
 var afterSubmit = TickPlan.Step("", true, "Ready.", [P("next")], submitted, 5000,
-    TargetPriority.ShortestPrompt, true);
+    TargetPriority.ShortestPrompt);
 Check("loop-submission-no-skip",
     !afterSubmit.Clear && afterSubmit.Action == TickAction.Write && afterSubmit.State.SkipTarget == null,
     afterSubmit.ToString());
 
 // A skipped word stays out of the pool for the window, then comes back.
 var skipping = TickPlan.Step("", true, "Ready.", [P("bomb")], new AssistState(null, false, null, "bomb", 6000),
-    5000, TargetPriority.ShortestPrompt, true);
+    5000, TargetPriority.ShortestPrompt);
 Check("loop-skip-window", skipping.Action == TickAction.None, skipping.ToString());
 var skipExpired = TickPlan.Step("", true, "Ready.", [P("bomb")], skipping.State, 7000,
-    TargetPriority.ShortestPrompt, true);
+    TargetPriority.ShortestPrompt);
 Check("loop-skip-expires", skipExpired.Action == TickAction.Write, skipExpired.ToString());
 
 // The enemy carrying a half-typed word dies: our partial text is cleared once it has stayed orphaned
 // for OrphanMs, never sooner, and never while typing is locked.
 var halfTyped = new AssistState("explo", true, "explosion", null, 0);
-var orphan1 = TickPlan.Step("explo", true, "Ready.", [P("bomb")], halfTyped, 10_000, TargetPriority.ShortestPrompt, true);
+var orphan1 = TickPlan.Step("explo", true, "Ready.", [P("bomb")], halfTyped, 10_000, TargetPriority.ShortestPrompt);
 Check("orphan-grace-no-clear", !orphan1.Clear && orphan1.State.OrphanSince == 10_000, orphan1.ToString());
-var orphan2 = TickPlan.Step("explo", true, "Ready.", [P("bomb")], orphan1.State, 10_000 + TickPlan.OrphanMs - 1, TargetPriority.ShortestPrompt, true);
+var orphan2 = TickPlan.Step("explo", true, "Ready.", [P("bomb")], orphan1.State, 10_000 + TickPlan.OrphanMs - 1, TargetPriority.ShortestPrompt);
 Check("orphan-grace-holds", !orphan2.Clear, orphan2.ToString());
-var orphan3 = TickPlan.Step("explo", true, "Ready.", [P("bomb")], orphan2.State, 10_000 + TickPlan.OrphanMs, TargetPriority.ShortestPrompt, true);
+var orphan3 = TickPlan.Step("explo", true, "Ready.", [P("bomb")], orphan2.State, 10_000 + TickPlan.OrphanMs, TargetPriority.ShortestPrompt);
 Check("orphan-cleared", orphan3.Clear && orphan3.State.LastWritten == null && orphan3.State.OrphanSince == null, orphan3.ToString());
-var orphanLocked = TickPlan.Step("explo", false, "Typing prohibited (2s).", [P("bomb")], orphan2.State, 20_000, TargetPriority.ShortestPrompt, true);
+var orphanLocked = TickPlan.Step("explo", false, "Typing prohibited (2s).", [P("bomb")], orphan2.State, 20_000, TargetPriority.ShortestPrompt);
 Check("orphan-locked-no-clear", !orphanLocked.Clear && orphanLocked.State.OrphanSince == 10_000, orphanLocked.ToString());
 // A finished word whose enemy died is cleared too: Enter would only submit a dead word.
-var deadWhole = TickPlan.Step("explosion", true, "Ready.", [], new AssistState("explosion", true, "explosion", null, 0, 1_000), 1_000 + TickPlan.OrphanMs, TargetPriority.ShortestPrompt, true);
+var deadWhole = TickPlan.Step("explosion", true, "Ready.", [], new AssistState("explosion", true, "explosion", null, 0, 1_000), 1_000 + TickPlan.OrphanMs, TargetPriority.ShortestPrompt);
 Check("orphan-finished-cleared", deadWhole.Clear, deadWhole.ToString());
 // A label that drops for a frame and comes back resets the grace, and typing carries on.
-var flicker = TickPlan.Step("explo", true, "Ready.", [P("explosion")], orphan2.State, 10_300, TargetPriority.ShortestPrompt, true);
+var flicker = TickPlan.Step("explo", true, "Ready.", [P("explosion")], orphan2.State, 10_300, TargetPriority.ShortestPrompt);
 Check("orphan-flicker-resets", !flicker.Clear && flicker.Action == TickAction.Write && flicker.State.OrphanSince == null, flicker.ToString());
 // Another prompt that the text still leads into is not an orphan: it is continued.
-var shared = TickPlan.Step("bo", true, "Ready.", [P("bomber")], new AssistState("bo", true, "bomb", null, 0, 1_000), 5_000, TargetPriority.ShortestPrompt, true);
+var shared = TickPlan.Step("bo", true, "Ready.", [P("bomber")], new AssistState("bo", true, "bomb", null, 0, 1_000), 5_000, TargetPriority.ShortestPrompt);
 Check("orphan-shared-prefix-continues", !shared.Clear && shared.Action == TickAction.Write && shared.State.CurrentTarget == "bomber", shared.ToString());
 // Text the player typed is never an orphan of ours.
-var playerOrphan = TickPlan.Step("my note", true, "Ready.", [P("bomb")], new AssistState("expl", true, "explosion", null, 0, 1_000), 9_000, TargetPriority.ShortestPrompt, true);
+var playerOrphan = TickPlan.Step("my note", true, "Ready.", [P("bomb")], new AssistState("expl", true, "explosion", null, 0, 1_000), 9_000, TargetPriority.ShortestPrompt);
 Check("orphan-player-text-kept", !playerOrphan.Clear, playerOrphan.ToString());
 // A just-submitted word whose prompt vanishes a frame before the field empties is not cleared.
-var submitRace = TickPlan.Step("bomb", true, "Ready.", [], new AssistState("bomb", true, "bomb", null, 0), 30_000, TargetPriority.ShortestPrompt, true);
+var submitRace = TickPlan.Step("bomb", true, "Ready.", [], new AssistState("bomb", true, "bomb", null, 0), 30_000, TargetPriority.ShortestPrompt);
 Check("orphan-submit-race-no-clear", !submitRace.Clear, submitRace.ToString());
 
 // ---- The handler's write path, through the same TickPlan.Apply the plugin calls every frame. ----
@@ -303,7 +299,7 @@ for (var frame = 0; frame < 12; frame++)
 {
     var at = 1000 + frame * 500;
     var tick = TickPlan.Step(mirror, true, "Ready.", barrierOnly, liveState, at,
-        TargetPriority.ShortestPrompt, true);
+        TargetPriority.ShortestPrompt);
     if (tick.Action == TickAction.None) break;
     liveState = TickPlan.Apply(tick, mirror, field, at, ref nextWrite, ref nextFocus, 0, 0, new Random(7), out _);
     mirror = tick.Clear ? "" : field.Writes[^1];
@@ -314,20 +310,20 @@ Check("handler-barrier-writes", string.Join(",", field.Writes) == "s,sh,shi,shie
 // Nothing is written while the duty prohibits typing.
 var lockedField = new FakeField();
 var lockedTick = TickPlan.Step("b", false, "Typing prohibited (3s).",
-    [P("bomb"), P("shield", null, 9, defense: true)], lockedPartial, 5000, TargetPriority.ShortestPrompt, true);
+    [P("bomb"), P("shield", null, 9, defense: true)], lockedPartial, 5000, TargetPriority.ShortestPrompt);
 TickPlan.Apply(lockedTick, "b", lockedField, 5000, ref nextWrite, ref nextFocus, 0, 0, new Random(7), out _);
 Check("handler-locked-no-write", lockedField.Writes.Count == 0, string.Join(",", lockedField.Writes));
 
 // Text the player replaced is never written over.
 var playerField = new FakeField();
 var playerTick = TickPlan.Step("my note", true, "Ready.", [P("bomb"), P("shield", null, 9, defense: true)],
-    replaced, 5000, TargetPriority.ShortestPrompt, true);
+    replaced, 5000, TargetPriority.ShortestPrompt);
 TickPlan.Apply(playerTick, "my note", playerField, 5000, ref nextWrite, ref nextFocus, 0, 0, new Random(7), out _);
 Check("handler-player-text-untouched", playerField.Writes.Count == 0, string.Join(",", playerField.Writes));
 
 // Deleting the last character empties the field through the setter.
 var deleteField = new FakeField();
-var deleteTick = TickPlan.Step("", true, "Ready.", [P("x")], oneChar, 5000, TargetPriority.ShortestPrompt, true);
+var deleteTick = TickPlan.Step("", true, "Ready.", [P("x")], oneChar, 5000, TargetPriority.ShortestPrompt);
 var afterDelete = TickPlan.Apply(deleteTick, "", deleteField, 5000, ref nextWrite, ref nextFocus, 0, 0,
     new Random(7), out _);
 Check("handler-last-char-clears",
@@ -337,7 +333,7 @@ Check("handler-last-char-clears",
 // A submitted word leaves the field empty and the next word is typed, not skipped.
 var submitField = new FakeField();
 var submitTick = TickPlan.Step("", true, "Ready.", [P("next")], submitted, 5000,
-    TargetPriority.ShortestPrompt, true);
+    TargetPriority.ShortestPrompt);
 TickPlan.Apply(submitTick, "", submitField, 5000, ref nextWrite, ref nextFocus, 0, 0, new Random(7), out _);
 Check("handler-submission-types-next", submitField.Writes.Count == 1 && submitField.Writes[0] == "n",
     string.Join(",", submitField.Writes));
@@ -345,7 +341,7 @@ Check("handler-submission-types-next", submitField.Writes.Count == 1 && submitFi
 // An inactive field is focused first and gets no text on that frame.
 var focusField = new FakeField { IsActive = false, FocusResult = true };
 var focusTick = TickPlan.Step("", true, "Ready.", [P("bomb")], new AssistState(null, false, null, null, 0),
-    5000, TargetPriority.ShortestPrompt, true);
+    5000, TargetPriority.ShortestPrompt);
 long focusWrite = 0, focusNext = 0;
 var focusedState = TickPlan.Apply(focusTick, "", focusField, 5000, ref focusWrite, ref focusNext, 0, 0,
     new Random(7), out _);
@@ -353,14 +349,13 @@ Check("handler-focus-before-write", focusField.Writes.Count == 0 && focusField.F
     $"{focusField.Writes.Count} writes, {focusField.FocusCalls} focuses");
 
 // Once focused, the same decision writes on the next frame.
-var secondTick = TickPlan.Step("", true, "Ready.", [P("bomb")], focusedState, 5300, TargetPriority.ShortestPrompt,
-    true);
+var secondTick = TickPlan.Step("", true, "Ready.", [P("bomb")], focusedState, 5300, TargetPriority.ShortestPrompt);
 TickPlan.Apply(secondTick, "", focusField, 5300, ref focusWrite, ref focusNext, 0, 0, new Random(7), out _);
 Check("handler-writes-after-focus", focusField.Writes.Count == 1 && focusField.Writes[0] == "b",
     string.Join(",", focusField.Writes));
 
 // ---- The gates and the whole frame, through Frame.Run: what Plugin.Tick now is without the native reads. ----
-var gates = new FrameSettings(TargetPriority.ShortestPrompt, true, 0, 0);
+var gates = new FrameSettings(TargetPriority.ShortestPrompt, 0, 0);
 
 var haltField = new FakeField();
 var haltTimers = new Timers();
@@ -439,7 +434,7 @@ RunFrame(new FrameContext(false, "", false, "my note", true, "Ready.", [P("bomb"
     new AssistState("b", true, "bomb", null, 0), replacedFrameField, 5000);
 Check("audit-F3-player-text-kept", replacedFrameField.Writes.Count == 0, string.Join(",", replacedFrameField.Writes));
 
-// F4: the first character is taken from the prepared text.
+// F4: the first character is taken from the prepared text; punctuation is typed as drawn.
 var accentField = new FakeField();
 RunFrame(new FrameContext(false, "", false, "", true, "Ready.", [P("éclair")]),
     new AssistState(null, false, null, null, 0), accentField, 5000);
@@ -449,7 +444,7 @@ Check("audit-F4-accent-first", accentField.Writes.Count == 1 && accentField.Writ
 var punctField = new FakeField();
 RunFrame(new FrameContext(false, "", false, "", true, "Ready.", [P("'bomb")]),
     new AssistState(null, false, null, null, 0), punctField, 5000);
-Check("audit-F4-punct-first", punctField.Writes.Count == 1 && punctField.Writes[0] == "b",
+Check("audit-F4-punct-first", punctField.Writes.Count == 1 && punctField.Writes[0] == "'",
     string.Join(",", punctField.Writes));
 
 // F5: deleting the last owned character skips the word; a submission does not.
@@ -477,14 +472,14 @@ Check("audit-F6-no-guessed-distance",
 
 // The barrier only drops text this plugin wrote: the player's own "b", "bo" towards a prompt stays.
 var typedByPlayer = TickPlan.Step("b", true, "Ready.", [P("bomb")], new AssistState(null, false, null, null, 0),
-    5000, TargetPriority.ShortestPrompt, true);
+    5000, TargetPriority.ShortestPrompt);
 var playerBarrier = TickPlan.Step("bo", true, "Ready.", [P("bomb"), P("shield", null, 9, defense: true)],
-    typedByPlayer.State, 5020, TargetPriority.ShortestPrompt, true);
+    typedByPlayer.State, 5020, TargetPriority.ShortestPrompt);
 Check("loop-barrier-keeps-player-prefix", !playerBarrier.Clear, playerBarrier.ToString());
 
 // A submitted full word whose twin is still on another enemy is a submission, not a deletion.
 var duplicate = TickPlan.Step("", true, "Ready.", [P("bomb", null, 2)], new AssistState("bomb", true, "bomb", null, 0),
-    5000, TargetPriority.ShortestPrompt, true);
+    5000, TargetPriority.ShortestPrompt);
 Check("loop-duplicate-submission-no-skip",
     !duplicate.Clear && duplicate.State.SkipTarget == null && duplicate.Action == TickAction.Write && duplicate.Next == 'b',
     duplicate.ToString());
@@ -499,7 +494,7 @@ Check("gate-chat-focused-no-focus", chatField.FocusCalls == 0 && chatField.Write
 // End to end at the new pace: 60 fps frames through Frame.Run with the 150-300 ms default. A long word's
 // enemy dies after a few characters; the leftover is cleared and the next word is typed from scratch.
 {
-    var pace = new FrameSettings(TargetPriority.ShortestPrompt, true, 150, 300);
+    var pace = new FrameSettings(TargetPriority.ShortestPrompt, 150, 300);
     var simField = new FakeField();
     var simState = new AssistState(null, false, null, null, 0);
     long simWrite = 0, simFocus = 0;

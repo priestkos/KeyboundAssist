@@ -25,14 +25,13 @@ internal static class TypingPlan
 
     // The prompts that continue what is already in the field, best first: a barrier word the player has
     // to answer outranks everything, then the configured priority.
-    internal static Prompt? Choose(IReadOnlyList<Prompt> prompts, string prefix, TargetPriority priority,
-        bool ignorePunctuation)
+    internal static Prompt? Choose(IReadOnlyList<Prompt> prompts, string prefix, TargetPriority priority)
     {
-        var wanted = Prepared(prefix, ignorePunctuation);
-        // A prompt that prepares to nothing ("!!", a stray symbol) can never be answered, so it is not a
-        // candidate at all - otherwise it would match an empty field and report Ready with no text.
+        var wanted = Typeable(prefix);
+        // A prompt that prepares to nothing can never be answered, so it is not a candidate at all -
+        // otherwise it would match an empty field and report Ready with no text.
         var matches = prompts
-            .Select(p => (Prompt: p, Text: Prepared(p.Text, ignorePunctuation)))
+            .Select(p => (Prompt: p, Text: Typeable(p.Text)))
             .Where(p => p.Text.Length > 0 && p.Text.StartsWith(wanted, StringComparison.OrdinalIgnoreCase))
             .ToArray();
         if (matches.Length == 0) return null;
@@ -45,18 +44,6 @@ internal static class TypingPlan
             : matches.OrderByDescending(p => p.Prompt.Defense)
                 .ThenBy(p => p.Text.Length).ThenBy(p => p.Prompt.NodeId);
         return ordered.First().Prompt;
-    }
-
-    // Accents and the punctuation the duty ignores are removed before anything is compared or typed, so
-    // the field, the prompt and the display all agree on what "typed so far" means.
-    internal static string Prepared(string text, bool ignorePunctuation)
-    {
-        var typeable = Typeable(text);
-        if (!ignorePunctuation) return typeable;
-        var builder = new StringBuilder(typeable.Length);
-        foreach (var c in typeable)
-            if (char.IsLetterOrDigit(c) || c == ' ') builder.Append(c);
-        return builder.ToString();
     }
 
     // A fresh draw per character, so the typing has no fixed cadence. Equal bounds mean a fixed
@@ -88,34 +75,34 @@ internal static class TypingPlan
 
     // True when the field is exactly what this plugin's append path could have produced towards that
     // prompt, in prepared form. Anything else is the player's own text and is never cleared.
-    internal static bool IsOwnedPrefix(string field, string target, bool ignorePunctuation) =>
+    internal static bool IsOwnedPrefix(string field, string target) =>
         field.Length > 0 &&
-        Prepared(target, ignorePunctuation).StartsWith(Prepared(field, ignorePunctuation),
+        Typeable(target).StartsWith(Typeable(field),
             StringComparison.OrdinalIgnoreCase);
 
     // The field is the authority on what has been typed: the plugin only ever appends the next
     // character, and never deletes or overwrites what the player put there.
     internal static Step Next(string field, IReadOnlyList<Prompt> prompts, TargetPriority priority,
-        bool ignorePunctuation, bool allowed, string reason)
+        bool allowed, string reason)
     {
         if (!allowed) return new(StepKind.Unavailable, reason);
         if (field.Length == 0)
         {
-            var fresh = Choose(prompts, "", priority, ignorePunctuation);
+            var fresh = Choose(prompts, "", priority);
             if (fresh == null) return new(StepKind.Waiting, "Waiting for an enemy prompt.");
-            // The first character comes from the prepared form, never the drawn one: a prompt that opens
-            // with punctuation would otherwise type the punctuation and lose the field.
-            var opening = Prepared(fresh.Value.Text, ignorePunctuation);
+            // The first character comes from the prepared form, never the drawn one, so an accented
+            // opening letter is typed as its base letter.
+            var opening = Typeable(fresh.Value.Text);
             return new(StepKind.Typing, $"Typing '{fresh.Value.Text}'.", fresh.Value.Text, opening[0],
                 fresh.Value.Defense);
         }
 
-        var match = Choose(prompts, field, priority, ignorePunctuation);
+        var match = Choose(prompts, field, priority);
         if (match == null)
             return new(StepKind.Waiting, $"The input holds '{field}'. Waiting for it to clear.");
 
-        var typed = Prepared(field, ignorePunctuation).Length;
-        var target = Prepared(match.Value.Text, ignorePunctuation);
+        var typed = Typeable(field).Length;
+        var target = Typeable(match.Value.Text);
         if (typed >= target.Length)
             return new(StepKind.Ready, $"'{match.Value.Text}' is typed. Press Enter.", match.Value.Text,
                 Defense: match.Value.Defense);

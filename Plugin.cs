@@ -143,7 +143,7 @@ public sealed class Plugin : IDalamudPlugin
 
         // Runs before the input field is even looked at: the duty's timer keeps counting in the gaps
         // between waves, which is exactly when nothing else in this plugin is doing work.
-        ActivityKeepAlive.Tick(now, configuration.KeepAlive);
+        ActivityKeepAlive.Tick(now);
 
         var addon = GameState.InputAddon(GameGui);
         var input = GameState.InputComponent(addon);
@@ -164,8 +164,7 @@ public sealed class Plugin : IDalamudPlugin
             GameState.Prompts(GameGui, Objects, player?.Position ?? default, player != null),
             GameState.ChatFocused(GameGui));
 
-        var settings = new FrameSettings(configuration.Priority, configuration.IgnorePunctuation,
-            configuration.CharDelayMinMs, configuration.CharDelayMaxMs);
+        var settings = new FrameSettings(configuration.Priority, configuration.CharDelayMinMs, configuration.CharDelayMaxMs);
 
         // One frame, in one place: the gates, the decision (permission, ownership, backspace, barrier
         // takeover, skip) and the write itself. tests/ drives this same entry point against a recording field.
