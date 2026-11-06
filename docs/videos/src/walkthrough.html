@@ -56,7 +56,7 @@
         padding: 8px 16px;
       }
 
-      .s1 .win { top: 88px; left: 64px; width: 460px; }
+      .s1 .win { top: 152px; left: 64px; width: 460px; }
       /* ImGui-tight spacing so the grown window stays above the caption */
       .s1 .dalamud-body { padding: 10px 16px 12px; }
       .s1 .dalamud-body label.row { margin-bottom: 8px; }
@@ -73,11 +73,15 @@
       .s2 .ep1 { top: 220px; left: 180px; }
       .s2 .ep2 { top: 280px; left: 520px; }
       .s2 .ep3 { top: 340px; left: 860px; }
-      .s3 .win { top: 48px; left: 48px; width: 360px; }
+      .s3 .win { top: 64px; right: 48px; width: 360px; }
       .s3 .ep-near { top: 300px; left: 640px; }
       .s3 .ep-far { top: 260px; left: 320px; opacity: 0.75; }
       .s3 .ep-veiled { top: 380px; left: 480px; }
       .s4 .win { top: 48px; right: 48px; width: 320px; opacity: 0.92; }
+      /* clear of the bottom caption */
+      .s4 .chat-panel { bottom: 92px; width: 760px; max-height: none; }
+      .s4 .chat-line { margin-bottom: 2px; }
+      .s4 .chat-input-hint { bottom: 70px; }
       .s5 .win { bottom: 48px; right: 48px; width: 360px; }
       .s5 .enter-hint {
         position: absolute;
@@ -267,27 +271,29 @@
       <div class="duty-title">Any territory</div>
       <div class="beat-label">/keyboundassist — status, on/off, usage</div>
       <div class="chat-panel" id="s4-chat">
-        <div class="chat-line echo" data-at="8.82">&gt; /keyboundassist status</div>
-        <div class="chat-line plugin" data-at="9.04">[Keybound Assist] Not in Keybound Brawler.</div>
-        <div class="chat-line echo" data-at="9.32">&gt; /keyboundassist off</div>
-        <div class="chat-line echo" data-at="9.54">&gt; /keyboundassist status</div>
-        <div class="chat-line plugin" data-at="9.75">[Keybound Assist] Assist is off.</div>
-        <div class="chat-line echo" data-at="10.04">&gt; /keyboundassist on</div>
-        <div class="chat-line echo" data-at="10.25">&gt; /keyboundassist status</div>
-        <div class="chat-line plugin" data-at="10.46">[Keybound Assist] Waiting for the Keybound Brawler input.</div>
-        <div class="chat-line echo" data-at="10.75">&gt; /keyboundassist help</div>
-        <div class="chat-line plugin" data-at="10.96">[Keybound Assist] Usage: /keyboundassist [on|off|status]</div>
+        <div class="chat-line echo" data-at="8.82">&gt; /keyboundassist on</div>
+        <div class="chat-line echo" data-at="9.02">&gt; /keyboundassist status</div>
+        <div class="chat-line plugin" data-at="9.22">[Keybound Assist] Not in Keybound Brawler.</div>
+        <div class="chat-line plugin" data-at="9.38">[Keybound Assist] activity: 48 timer resets, 0 consecutive failures, duty agent cleared, last idle 2.9s.</div>
+        <div class="chat-line plugin" data-at="9.54">[Keybound Assist] casts: none.</div>
+        <div class="chat-line echo" data-at="9.74">&gt; /keyboundassist off</div>
+        <div class="chat-line echo" data-at="9.94">&gt; /keyboundassist status</div>
+        <div class="chat-line plugin" data-at="10.14">[Keybound Assist] Assist is off.</div>
+        <div class="chat-line plugin" data-at="10.30">[Keybound Assist] activity: 48 timer resets, 0 consecutive failures, duty agent cleared, last idle 2.9s.</div>
+        <div class="chat-line plugin" data-at="10.46">[Keybound Assist] casts: none.</div>
+        <div class="chat-line echo" data-at="10.70">&gt; /keyboundassist help</div>
+        <div class="chat-line plugin" data-at="10.90">[Keybound Assist] Usage: /keyboundassist [on|off|status]</div>
       </div>
       <div class="chat-input-hint">Illustrative chat lines — not a real client log</div>
       <div class="dalamud-window win">
         <div class="dalamud-title">Keybound Assist</div>
         <div class="dalamud-body">
           <label class="row">
-            <input type="checkbox" class="checkbox" id="s4-check" disabled />
+            <input type="checkbox" class="checkbox" id="s4-check" checked disabled />
             Fill prompts for me
           </label>
           <div class="separator"></div>
-          <p class="status-line">Assist is off.</p>
+          <p class="status-line" id="s4-status">Not in Keybound Brawler.</p>
         </div>
       </div>
     </div>
@@ -336,10 +342,10 @@
       const strikeChars = "strike";
 
       const clicks = [
-        { t: 0.68, x: 89, y: 144 },
-        { t: 1.32, x: 197, y: 206 },
-        { t: 2.04, x: 161, y: 278 },
-        { t: 5.96, x: 120, y: 118 },
+        { t: 0.68, x: 89, y: 208 },
+        { t: 1.32, x: 197, y: 270 },
+        { t: 2.04, x: 161, y: 342 },
+        { t: 5.96, x: 950, y: 150 },
         { t: 9.39, x: 180, y: 580 },
         { t: 13.29, x: 640, y: 588 },
         { t: 13.86, x: 640, y: 520 },
@@ -347,16 +353,16 @@
 
       const cursorPath = [
         { t: 0.25, x: 640, y: 420 },
-        { t: 0.61, x: 89, y: 144 },
-        { t: 1.11, x: 89, y: 144 },
-        { t: 1.25, x: 197, y: 206 },
-        { t: 1.82, x: 205, y: 206 },
-        { t: 1.96, x: 161, y: 278 },
+        { t: 0.61, x: 89, y: 208 },
+        { t: 1.11, x: 89, y: 208 },
+        { t: 1.25, x: 197, y: 270 },
+        { t: 1.82, x: 205, y: 270 },
+        { t: 1.96, x: 161, y: 342 },
         { t: 2.39, x: 640, y: 420 },
         { t: 2.86, x: 900, y: 360 },
         { t: 4.29, x: 220, y: 248 },
         { t: 5.71, x: 640, y: 320 },
-        { t: 5.89, x: 120, y: 118 },
+        { t: 5.89, x: 950, y: 150 },
         { t: 6.57, x: 700, y: 318 },
         { t: 8.57, x: 200, y: 560 },
         { t: 9.14, x: 180, y: 580 },
@@ -527,7 +533,8 @@
             line.style.transform = `translateY(${6 * (1 - e)}px)`;
           }
           const s4Check = document.getElementById("s4-check");
-          s4Check.checked = t >= 10.04;
+          s4Check.checked = t < 9.74;
+          document.getElementById("s4-status").textContent = t < 9.74 ? "Not in Keybound Brawler." : "Assist is off.";
         }
 
         const s5Opacity = sceneMotion(t, scenes[4].start, scenes[4].end).opacity;

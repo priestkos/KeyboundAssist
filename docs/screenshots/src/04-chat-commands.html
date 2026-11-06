@@ -12,7 +12,8 @@
         opacity: 0.92;
       }
       /* keep the last chat lines clear of the scene label and hint */
-      .chat-panel { bottom: 64px; max-height: none; }
+      .chat-panel { bottom: 64px; width: 760px; max-height: none; }
+      .chat-line { margin-bottom: 2px; }
       .chat-input-hint { bottom: 42px; }
     </style>
   </head>
@@ -23,14 +24,16 @@
     <div class="scene-label">Slash commands — on, off, status (chat + log)</div>
 
     <div class="chat-panel">
+      <div class="chat-line echo">&gt; /keyboundassist on</div>
       <div class="chat-line echo">&gt; /keyboundassist status</div>
       <div class="chat-line plugin">[Keybound Assist] Not in Keybound Brawler.</div>
+      <div class="chat-line plugin">[Keybound Assist] activity: 48 timer resets, 0 consecutive failures, duty agent cleared, last idle 2.9s.</div>
+      <div class="chat-line plugin">[Keybound Assist] casts: none.</div>
       <div class="chat-line echo">&gt; /keyboundassist off</div>
       <div class="chat-line echo">&gt; /keyboundassist status</div>
       <div class="chat-line plugin">[Keybound Assist] Assist is off.</div>
-      <div class="chat-line echo">&gt; /keyboundassist on</div>
-      <div class="chat-line echo">&gt; /keyboundassist status</div>
-      <div class="chat-line plugin">[Keybound Assist] Waiting for the Keybound Brawler input.</div>
+      <div class="chat-line plugin">[Keybound Assist] activity: 48 timer resets, 0 consecutive failures, duty agent cleared, last idle 2.9s.</div>
+      <div class="chat-line plugin">[Keybound Assist] casts: none.</div>
       <div class="chat-line echo">&gt; /keyboundassist help</div>
       <div class="chat-line plugin">[Keybound Assist] Usage: /keyboundassist [on|off|status]</div>
     </div>
