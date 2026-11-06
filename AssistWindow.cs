@@ -29,6 +29,27 @@ internal sealed class AssistWindow(Configuration configuration, Action save, Fun
         }
         ImGui.TextDisabled("Each character draws a new delay in this range. Equal ends = fixed.");
 
+        var autoSubmit = configuration.AutoSubmit;
+        if (ImGui.Checkbox("Send the word automatically", ref autoSubmit))
+        {
+            configuration.AutoSubmit = autoSubmit;
+            save();
+        }
+        if (autoSubmit)
+        {
+            var submitMin = configuration.SubmitDelayMinMs;
+            var submitMax = configuration.SubmitDelayMaxMs;
+            ImGui.SetNextItemWidth(200f);
+            if (ImGui.DragIntRange2("Delay before sending (ms)", ref submitMin, ref submitMax, 1f,
+                    TypingPlan.SubmitFloorMs, TypingPlan.SubmitCapMs))
+            {
+                configuration.SubmitDelayMinMs = submitMin;
+                configuration.SubmitDelayMaxMs = submitMax;
+                save();
+            }
+            ImGui.TextDisabled("Waited after the last letter, drawn fresh per word. Default 300-500.");
+        }
+
         var priority = (int)configuration.Priority;
         ImGui.SetNextItemWidth(160f);
         if (ImGui.Combo("Target", ref priority, new[] { "Shortest prompt", "Nearest enemy", "Threat" }, 3))
@@ -40,8 +61,10 @@ internal sealed class AssistWindow(Configuration configuration, Action save, Fun
             ImGui.TextDisabled("Needles Cactuar, casting adds, Cactuars, adds, then the boss; lowest first.");
 
         ImGui.Separator();
-        ImGui.TextWrapped("The plugin types the word and stops. Press Enter yourself to submit it, " +
-                          "and the next prompt is filled once the field is empty again.");
+        ImGui.TextWrapped(configuration.AutoSubmit
+            ? "The plugin types the word, waits the delay above and sends it; the next prompt is filled once the field is empty again."
+            : "The plugin types the word and stops. Press Enter yourself to submit it, " +
+              "and the next prompt is filled once the field is empty again.");
         ImGui.Separator();
         ImGui.TextWrapped(status());
 

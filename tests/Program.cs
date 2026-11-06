@@ -523,6 +523,108 @@ Check("gate-chat-focused-no-focus", chatField.FocusCalls == 0 && chatField.Write
     Check("sim-pace-floor", gaps.Count > 0 && gaps.All(g => g >= TypingPlan.MinDelayMs), $"min gap {(gaps.Count > 0 ? gaps.Min() : -1)} ms");
 }
 
+// ---- Auto-send: only our finished word, once, never sooner than the drawn delay, and only through the gates. ----
+{
+    var on = new FrameSettings(TargetPriority.ShortestPrompt, 150, 300, AutoSubmit: true);
+    var off = new FrameSettings(TargetPriority.ShortestPrompt, 150, 300);
+    var ours = new AssistState("bomb", true, "bomb", null, 0);
+    FrameContext Ctx(string field, Prompt[] shown, bool allowed = true, bool halted = false, bool chat = false) =>
+        new(halted, "Holding.", false, field, allowed, allowed ? "Ready." : "Typing prohibited (2s).", shown, chat);
+    (AssistState State, string Status) Run(FrameContext c, FrameSettings s, AssistState st, FakeField f, long at)
+    {
+        long w = 0, fo = 0;
+        return Frame.Run(c, s, st, f, at, ref w, ref fo, new Random(3));
+    }
+
+    var offField = new FakeField();
+    var offState = ours;
+    for (long at = 1000; at < 4000; at += 16) offState = Run(Ctx("bomb", [P("bomb")]), off, offState, offField, at).State;
+    Check("send-off-never", offField.Submits == 0, $"{offField.Submits} sends");
+
+    var f1 = new FakeField();
+    var armed = Run(Ctx("bomb", [P("bomb")]), on, ours, f1, 1000);
+    Check("send-armed-not-sent", f1.Submits == 0 && armed.State.SubmitAt is >= 1300 and <= 1500 && armed.Status.Contains("Sending in"),
+        $"{armed.State.SubmitAt} '{armed.Status}'");
+    var due = armed.State.SubmitAt ?? 0;
+    var waiting = Run(Ctx("bomb", [P("bomb")]), on, armed.State, f1, due - 1);
+    Check("send-waits-for-delay", f1.Submits == 0, $"{f1.Submits} sends at {due - 1}");
+    var fired = Run(Ctx("bomb", [P("bomb")]), on, waiting.State, f1, due);
+    Check("send-fires-at-delay", f1.Submits == 1 && fired.State.Sent == "bomb", $"{f1.Submits} sends, sent '{fired.State.Sent}'");
+    var stuck = fired.State;
+    for (long at = due + 16; at < due + 3000; at += 16) stuck = Run(Ctx("bomb", [P("bomb")]), on, stuck, f1, at).State;
+    Check("send-once-if-field-kept", f1.Submits == 1 && f1.Writes.Count == 0, $"{f1.Submits} sends, {f1.Writes.Count} writes");
+
+    var fFloor = new FakeField();
+    var floorArmed = Run(Ctx("bomb", [P("bomb")]), on with { SubmitMinMs = 0, SubmitMaxMs = 0 }, ours, fFloor, 1000);
+    Check("send-floor", floorArmed.State.SubmitAt == 1000 + TypingPlan.SubmitFloorMs, $"{floorArmed.State.SubmitAt}");
+    Check("send-cap", Run(Ctx("bomb", [P("bomb")]), on with { SubmitMinMs = 9000, SubmitMaxMs = 9000 }, ours, fFloor, 1000)
+        .State.SubmitAt == 1000 + TypingPlan.SubmitCapMs, "expected the cap");
+
+    var fPlayer = new FakeField();
+    var playerState = new AssistState(null, false, null, null, 0);
+    for (long at = 1000; at < 3000; at += 16) playerState = Run(Ctx("bomb", [P("bomb")]), on, playerState, fPlayer, at).State;
+    Check("send-never-player-word", fPlayer.Submits == 0, $"{fPlayer.Submits} sends");
+    var fUnseen = new FakeField();
+    var unseen = Run(Ctx("bomb", [P("bomb")]), on, ours with { WriteSeen = false, LastWritten = "bom" }, fUnseen, 1000);
+    Check("send-needs-read-back", unseen.State.SubmitAt == null, $"{unseen.State.SubmitAt}");
+
+    var fLock = new FakeField();
+    var sendLocked = Run(Ctx("bomb", [P("bomb")], allowed: false), on, armed.State, fLock, due + 10);
+    Check("send-locked-none", fLock.Submits == 0 && sendLocked.State.SubmitAt == null, $"{fLock.Submits} {sendLocked.State.SubmitAt}");
+
+    var fHalt = new FakeField();
+    var halted = Run(Ctx("bomb", [P("bomb")], halted: true), on, armed.State, fHalt, due + 10);
+    var rearmed = Run(Ctx("bomb", [P("bomb")]), on, halted.State, fHalt, due + 5000);
+    Check("send-halt-rearms", fHalt.Submits == 0 && halted.State.SubmitAt == null && rearmed.State.SubmitAt >= due + 5300,
+        $"{fHalt.Submits} {halted.State.SubmitAt} {rearmed.State.SubmitAt}");
+
+    var fChat = new FakeField();
+    Run(Ctx("bomb", [P("bomb")], chat: true), on, armed.State, fChat, due);
+    var fIdle = new FakeField { IsActive = false, FocusResult = false };
+    Run(Ctx("bomb", [P("bomb")]), on, armed.State, fIdle, due);
+    Check("send-chat-or-inactive-waits", fChat.Submits == 0 && fIdle.Submits == 0, $"{fChat.Submits} {fIdle.Submits}");
+
+    var fFail = new FakeField { SubmitResult = false };
+    var failed = Run(Ctx("bomb", [P("bomb")]), on, armed.State, fFail, due);
+    for (long at = due + 16; at < due + 2000; at += 16) failed = Run(Ctx("bomb", [P("bomb")]), on, failed.State, fFail, at);
+    Check("send-failure-not-retried", fFail.Submits == 1 && failed.Status.Contains("Press Enter"), $"{fFail.Submits} '{failed.Status}'");
+
+    // A one-letter word whose twin is still shown: the field emptied by our send is not a backspace.
+    var fOne = new FakeField();
+    var oneSent = Run(Ctx("x", [P("x")]), on, new AssistState("x", true, "x", null, 0, SubmitAt: 1000), fOne, 1000);
+    var oneAfter = Run(Ctx("", [P("x", null, 4)]), on, oneSent.State, fOne, 1016);
+    Check("send-one-letter-not-skipped", fOne.Submits == 1 && oneAfter.State.SkipTarget == null && !fOne.Writes.Contains(""),
+        $"skip '{oneAfter.State.SkipTarget}', writes {string.Join(",", fOne.Writes)}");
+
+    // End to end at 60 fps with the defaults: two words typed and sent, each send 300-500 ms after its last letter.
+    var simField = new FakeField();
+    var simState = new AssistState(null, false, null, null, 0);
+    long simWrite = 0, simFocus = 0;
+    var simText = "";
+    var simRng = new Random(9);
+    var words = new Queue<string>(["bomb", "grunt"]);
+    var current = words.Dequeue();
+    var lastLetterAt = -1L;
+    var sendGaps = new List<long>();
+    for (long at = 200_000; at < 206_000; at += 16)
+    {
+        var sendsBefore = simField.Submits;
+        var writesBefore = simField.Writes.Count;
+        simState = Frame.Run(new FrameContext(false, "", false, simText, true, "Ready.", current == "" ? [] : [P(current, null, 1)]),
+            on, simState, simField, at, ref simWrite, ref simFocus, simRng).State;
+        if (simField.Writes.Count > writesBefore) { simText = simField.Writes[^1]; lastLetterAt = at; }
+        if (simField.Submits > sendsBefore)
+        {
+            sendGaps.Add(at - lastLetterAt);
+            simText = "";
+            current = words.Count > 0 ? words.Dequeue() : "";
+        }
+    }
+    Check("sim-send-both-words", simField.Submits == 2 && current == "", $"{simField.Submits} sends, '{current}' left");
+    Check("sim-send-delay", sendGaps.Count == 2 && sendGaps.All(g => g is >= 300 and <= 500 + 16),
+        string.Join(",", sendGaps));
+}
+
 // ---- Threat order (AutoKeyboundBrawler's tiers) and the cast-bar mapping that feeds it. ----
 HashSet<string> cactuarSheet = new(StringComparer.OrdinalIgnoreCase) { "1,000 Needles" };
 Prompt T(uint node, string text, float y) => new(node, text, false, 0, y, 1f, null);
@@ -599,6 +701,15 @@ sealed class FakeField : IInputField
     }
 
     public void SetText(string text) => Writes.Add(text);
+
+    public bool SubmitResult { get; set; } = true;
+    public int Submits;
+
+    public bool Submit()
+    {
+        Submits++;
+        return SubmitResult;
+    }
 }
 
 sealed class Timers

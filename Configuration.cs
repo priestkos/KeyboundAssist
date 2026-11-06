@@ -16,6 +16,13 @@ internal sealed class Configuration : IPluginConfiguration
 
     public TargetPriority Priority { get; set; } = TargetPriority.ShortestPrompt;
 
+    // Sends the finished word itself after a fresh delay in this range. Off unless the player turns it on.
+    public bool AutoSubmit { get; set; }
+
+    public int SubmitDelayMinMs { get; set; } = 300;
+
+    public int SubmitDelayMaxMs { get; set; } = 500;
+
     // Clears read from the Masterstroke achievements; null until one has been read.
     public int? AchievementWins { get; set; }
 
@@ -35,6 +42,9 @@ internal sealed class Configuration : IPluginConfiguration
         CharDelayMinMs = Math.Clamp(CharDelayMinMs, TypingPlan.MinDelayMs, TypingPlan.MaxDelayMs);
         CharDelayMaxMs = Math.Clamp(CharDelayMaxMs, CharDelayMinMs, TypingPlan.MaxDelayMs);
         if (!Enum.IsDefined(Priority)) Priority = TargetPriority.ShortestPrompt;
+        if (SubmitDelayMinMs > SubmitDelayMaxMs) (SubmitDelayMinMs, SubmitDelayMaxMs) = (SubmitDelayMaxMs, SubmitDelayMinMs);
+        SubmitDelayMinMs = Math.Clamp(SubmitDelayMinMs, TypingPlan.SubmitFloorMs, TypingPlan.SubmitCapMs);
+        SubmitDelayMaxMs = Math.Clamp(SubmitDelayMaxMs, SubmitDelayMinMs, TypingPlan.SubmitCapMs);
         ManualWins = Math.Max(0, ManualWins);
         WordsSeen ??= [];
     }

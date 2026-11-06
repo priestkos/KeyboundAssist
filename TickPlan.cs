@@ -1,13 +1,14 @@
 namespace KeyboundAssist;
 
-internal enum TickAction { None, Write, Clear }
+internal enum TickAction { None, Write, Clear, Submit }
 
 // Everything the update loop decides between reading the field and writing to it, with no Dalamud and no
 // native dependency. tests/ drives this exact function, so the order of the permission gate, the
 // ownership proof and the clears is executed rather than reviewed.
+// Sent is the word auto-send submitted, until the field empties; SubmitAt is when the pending send fires.
 internal readonly record struct AssistState(
     string? LastWritten, bool WriteSeen, string? CurrentTarget, string? SkipTarget, long SkipUntil,
-    long? OrphanSince = null);
+    long? OrphanSince = null, string? Sent = null, long? SubmitAt = null);
 
 internal readonly record struct TickOutcome(AssistState State, TickAction Action, char Next, string Status)
 {
@@ -21,6 +22,8 @@ internal interface IInputField
     bool IsActive { get; }
     bool Focus();
     void SetText(string text);
+    // The field's own Enter callback, as a physical Enter would invoke it. False when it could not be invoked.
+    bool Submit();
 }
 
 internal static class TickPlan
@@ -32,7 +35,7 @@ internal static class TickPlan
     internal const int OrphanMs = 400;
 
     internal static TickOutcome Step(string field, bool allowed, string reason, Prompt[] prompts,
-        AssistState state, long now, TargetPriority priority)
+        AssistState state, long now, TargetPriority priority, bool autoSubmit = false)
     {
         var pool = prompts;
         var skipTarget = state.SkipTarget;
@@ -59,12 +62,15 @@ internal static class TickPlan
         // Enter, even when a twin of the word is still on another enemy. A one-character word stays ambiguous.
         var submittedWhole = lastWritten != null && lastWritten.Length > 1 && currentTarget != null &&
             PreparedEqual(lastWritten, currentTarget);
+        // A field emptied after auto-send is the submission, never a backspace, even for a one-letter word.
+        var sent = state.Sent;
         var deleted = writeSeen && lastWritten != null &&
-            (field.Length == 0 ? wordShown && !submittedWhole : TypingPlan.PlayerDeleted(field, lastWritten));
+            (field.Length == 0 ? wordShown && !submittedWhole && sent == null : TypingPlan.PlayerDeleted(field, lastWritten));
         if (field.Length == 0)
         {
             lastWritten = null;
             writeSeen = false;
+            sent = null;
         }
         if (deleted)
         {
@@ -108,8 +114,13 @@ internal static class TickPlan
             return new TickOutcome(new AssistState(null, false, null, skipTarget, skipUntil),
                 TickAction.Clear, '\0', "Dropping the partial word for a barrier prompt.");
 
+        // Auto-send only a finished word this plugin typed and has read back, once: the player's own word is his
+        // to send, and a word the duty left in the field after a send is not sent again.
+        var sendable = autoSubmit && step.Kind == StepKind.Ready && owned && sent == null;
         var nextState = new AssistState(lastWritten, writeSeen,
-            step.Kind is StepKind.Typing or StepKind.Ready ? step.Target : null, skipTarget, skipUntil, orphanSince);
+            step.Kind is StepKind.Typing or StepKind.Ready ? step.Target : null, skipTarget, skipUntil, orphanSince,
+            sent, sendable ? state.SubmitAt : null);
+        if (sendable) return new TickOutcome(nextState, TickAction.Submit, '\0', step.Status);
         return step.Kind == StepKind.Typing
             ? new TickOutcome(nextState, TickAction.Write, step.Next, step.Status)
             : new TickOutcome(nextState, TickAction.None, '\0', step.Status);
@@ -131,13 +142,36 @@ internal static class TickPlan
     // the plugin can make goes through here.
     internal static AssistState Apply(TickOutcome outcome, string field, IInputField input, long now,
         ref long nextWriteAt, ref long nextFocusAt, int minMs, int maxMs, Random random, out string status,
-        bool chatFocused = false)
+        bool chatFocused = false, int submitMinMs = 300, int submitMaxMs = 500)
     {
         status = outcome.Status;
         if (outcome.Clear)
         {
             input.SetText("");
             return outcome.State;
+        }
+        if (outcome.Action == TickAction.Submit)
+        {
+            // The delay is drawn when the word is first seen finished, so a send never follows the last letter at once.
+            if (outcome.State.SubmitAt is not { } at)
+            {
+                var delay = TypingPlan.DrawDelay(random, submitMinMs, submitMaxMs, TypingPlan.SubmitFloorMs, TypingPlan.SubmitCapMs);
+                status = $"'{field}' is typed. Sending in {delay} ms.";
+                return outcome.State with { SubmitAt = now + delay };
+            }
+            if (now < at) return outcome.State;
+            if (!input.IsActive || chatFocused)
+            {
+                status = chatFocused ? "Waiting to send - the chat input is in use." : "Waiting to send - the activity input is not active.";
+                return outcome.State;
+            }
+            if (!input.Submit())
+            {
+                status = "Could not send the word; press Enter.";
+                return outcome.State with { Sent = field, SubmitAt = null };
+            }
+            status = $"Sent '{field}'.";
+            return outcome.State with { Sent = field, SubmitAt = null };
         }
         if (outcome.Action != TickAction.Write) return outcome.State;
 

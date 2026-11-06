@@ -237,7 +237,8 @@ public sealed class Plugin : IDalamudPlugin
             Conditions[ConditionFlag.BetweenAreas] || Conditions[ConditionFlag.OccupiedInCutSceneEvent],
             read.Value.Field, read.Value.Allowed, read.Value.Reason, prompts, GameState.ChatFocused(GameGui));
 
-        var settings = new FrameSettings(configuration.Priority, configuration.CharDelayMinMs, configuration.CharDelayMaxMs);
+        var settings = new FrameSettings(configuration.Priority, configuration.CharDelayMinMs, configuration.CharDelayMaxMs,
+            configuration.AutoSubmit, configuration.SubmitDelayMinMs, configuration.SubmitDelayMaxMs);
 
         // One frame, in one place: the gates, the decision (permission, ownership, backspace, barrier
         // takeover, skip) and the write itself. tests/ drives this same entry point against a recording field.

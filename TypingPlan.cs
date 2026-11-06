@@ -61,11 +61,16 @@ internal static class TypingPlan
     // No faster than a quick human typist (~90 WPM): the plugin fills the field, so this is its only pace.
     internal const int MinDelayMs = 130;
 
-    internal static int DrawDelay(Random random, int minMs, int maxMs)
+    // Auto-send: never sooner than SubmitFloorMs after the last character, default 300-500 ms - one to two
+    // keystroke gaps at the default typing pace, which is where a person's own Enter lands.
+    internal const int SubmitFloorMs = 200;
+    internal const int SubmitCapMs = 2000;
+
+    internal static int DrawDelay(Random random, int minMs, int maxMs, int floor = MinDelayMs, int cap = MaxDelayMs)
     {
         if (minMs > maxMs) (minMs, maxMs) = (maxMs, minMs);
-        minMs = Math.Clamp(minMs, MinDelayMs, MaxDelayMs);
-        maxMs = Math.Clamp(maxMs, minMs, MaxDelayMs);
+        minMs = Math.Clamp(minMs, floor, cap);
+        maxMs = Math.Clamp(maxMs, minMs, cap);
         return random.Next(minMs, maxMs + 1);
     }
 
