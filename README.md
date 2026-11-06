@@ -17,15 +17,17 @@ These images are **mock-ups** (HTML rendered to PNG). They are not real in-game 
 
 | | |
 | --- | --- |
-| ![Config window mock-up](docs/screenshots/01-config-window.png) | **Settings window** — master switch (Fill prompts for me), delay range (130–1000 ms, default 150–300), target combo set to Threat with its help line, help text, live status line, wins (Sync from achievements, manual count) and the Words seen list. |
+| ![Config window mock-up](docs/screenshots/01-config-window.png) | **Settings window** — master switch (Fill prompts for me), delay range (130–1000 ms, default 150–300), Send the word automatically with its delay range (200–2000 ms, default 300–500), target combo set to Threat with its help line, help text, live status line, wins (Sync from achievements, manual count) and the Words seen list. |
 | ![In-duty typing mock-up](docs/screenshots/02-duty-typing.png) | **Prompt fill** — enemy prompt labels and the duty input field with partial typing; status shows the active target word. |
 | ![Cryptic & nearest mock-up](docs/screenshots/03-cryptic-nearest.png) | **Cryptic Communications & nearest target** — static tiles over a veiled label, nearest-enemy targeting, typing in progress. |
 | ![Chat commands mock-up](docs/screenshots/04-chat-commands.png) | **Commands** — `/keyboundassist status` output in chat, `on`/`off` toggles (no chat echo), and usage text for unknown args. |
-| ![Press Enter mock-up](docs/screenshots/05-press-enter.png) | **Ready to submit** — full word in the field; status `'…' is typed. Press Enter.` (plugin does not submit). |
+| ![Press Enter mock-up](docs/screenshots/05-press-enter.png) | **Ready to submit** — full word in the field; status `'…' is typed. Press Enter.` (auto-send off, the default: the plugin does not submit). |
+| ![Auto-send mock-up](docs/screenshots/06-auto-send.png) | **Auto-send** — with the option on, the finished word waits a fresh delay drawn from 300–500 ms (status `'…' is typed. Sending in 412 ms.`), then the field's own Enter handler submits it; no key is pressed. |
+| ![Grey box mock-up](docs/screenshots/07-grey-box.png) | **Greyed-out box** — the box of the word in progress turned grey, so the half-typed text was cleared that frame and the next word is typed by the target order; `/keyboundassist status` lists each prompt's box state. |
 
 ## Mock-up video
 
-A short **mock-up** walkthrough (not real gameplay) cross-fades through the same scenes with on-screen beat labels and bottom captions. The gold **Mock-up** label stays visible for the whole clip.
+A short **mock-up** walkthrough (not real gameplay) cross-fades through the settings, typing, Cryptic/nearest, greyed-out box, Press Enter → auto-send and chat-command scenes with on-screen beat labels and bottom captions. The gold **Mock-up** label stays visible for the whole clip.
 
 - [mockup-walkthrough.mp4](docs/videos/mockup-walkthrough.mp4) (H.264, 1280×720, ~15 s)
 - [mockup-walkthrough.gif](docs/videos/mockup-walkthrough.gif) (preview)

@@ -341,3 +341,11 @@ input[type="range"] {
   border-radius: 0 4px 4px 0;
   max-width: 240px;
 }
+
+/* KTGEWord box state 102: dark grey fill, word drawn at 80% alpha */
+.enemy-prompt.grey {
+  color: rgba(175, 175, 175, 0.8);
+  background: rgba(46, 46, 50, 0.9);
+  border-color: #5c5c62;
+  box-shadow: none;
+}

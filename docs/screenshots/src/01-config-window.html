@@ -39,7 +39,7 @@
     <div class="game-backdrop"></div>
     <div class="duty-title">Keybound Brawler · MOCK SCENE</div>
     <div class="mockup-banner">Mock-up</div>
-    <div class="scene-label">Settings window — master switch, delay range, Threat target, status, wins, words seen</div>
+    <div class="scene-label">Settings window — master switch, typing delay, auto-send and its delay, Threat target, status, wins, words seen</div>
 
     <div class="dalamud-window">
       <div class="dalamud-title">Keybound Assist</div>
@@ -60,6 +60,20 @@
         </div>
         <p class="text-disabled">Each character draws a new delay in this range. Equal ends = fixed.</p>
 
+        <label class="row">
+          <input type="checkbox" class="checkbox" checked disabled />
+          Send the word automatically
+        </label>
+        <div class="delay-range-row">
+          <div class="label">Delay before sending (ms)</div>
+          <div class="delay-range-values">
+            <input type="number" value="300" min="200" max="2000" disabled />
+            <span class="sep">—</span>
+            <input type="number" value="500" min="200" max="2000" disabled />
+          </div>
+        </div>
+        <p class="text-disabled">Waited after the last letter, drawn fresh per word. Default 300-500.</p>
+
         <div class="combo-row">
           <div class="label">Target</div>
           <select disabled>
@@ -72,7 +86,7 @@
 
         <div class="separator"></div>
         <p class="help-text">
-          The plugin types the word and stops. Press Enter yourself to submit it, and the next prompt is filled once the field is empty again.
+          The plugin types the word, waits the delay above and sends it; the next prompt is filled once the field is empty again.
         </p>
         <div class="separator"></div>
         <p class="status-line">Typing 'slash'.</p>
@@ -98,8 +112,7 @@
    11  strike
     8  guardian
     6  meteor
-    4  thunderclap
-    3  veil</div>
+    4  thunderclap</div>
       </div>
     </div>
   </body>

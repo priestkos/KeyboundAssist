@@ -12,6 +12,8 @@ const scenes = [
   { html: "03-cryptic-nearest.html", png: "03-cryptic-nearest.png" },
   { html: "04-chat-commands.html", png: "04-chat-commands.png" },
   { html: "05-press-enter.html", png: "05-press-enter.png" },
+  { html: "06-auto-send.html", png: "06-auto-send.png" },
+  { html: "07-grey-box.html", png: "07-grey-box.png" },
 ];
 
 await mkdir(outDir, { recursive: true });

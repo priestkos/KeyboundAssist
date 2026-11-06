@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Mock-up: Auto-send</title>
+    <link rel="stylesheet" href="common.css" />
+    <style>
+      .dalamud-window { top: 64px; right: 48px; width: 400px; }
+      .send-hint {
+        position: absolute; bottom: 188px; left: 50%; transform: translateX(-50%);
+        font-size: 13px; color: #c9a227; letter-spacing: 0.05em;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="game-backdrop"></div>
+    <div class="duty-title">Keybound Brawler</div>
+    <div class="mockup-banner">Mock-up</div>
+    <div class="scene-label">Auto-send on — the finished word is sent after a fresh 300–500 ms delay, never at once</div>
+
+    <div class="duty-hud">
+      <div class="enemy-prompt" style="top: 280px; left: 520px">slash</div>
+      <div class="enemy-prompt" style="top: 340px; left: 880px">meteor</div>
+      <div class="input-bar">slash</div>
+      <div class="send-hint">▼ Sent by the field's own Enter handler after the delay — no key pressed</div>
+    </div>
+
+    <div class="dalamud-window">
+      <div class="dalamud-title">Keybound Assist</div>
+      <div class="dalamud-body">
+        <label class="row">
+          <input type="checkbox" class="checkbox" checked disabled />
+          Send the word automatically
+        </label>
+        <div class="delay-range-row">
+          <div class="label">Delay before sending (ms)</div>
+          <div class="delay-range-values">
+            <input type="number" value="300" disabled />
+            <span class="sep">—</span>
+            <input type="number" value="500" disabled />
+          </div>
+        </div>
+        <p class="text-disabled">Waited after the last letter, drawn fresh per word. Default 300-500.</p>
+        <div class="separator"></div>
+        <p class="status-line">'slash' is typed. Sending in 412 ms.</p>
+      </div>
+    </div>
+  </body>
+</html>

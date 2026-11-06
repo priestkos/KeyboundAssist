@@ -77,12 +77,17 @@
       .s3 .ep-near { top: 300px; left: 640px; }
       .s3 .ep-far { top: 260px; left: 320px; opacity: 0.75; }
       .s3 .ep-veiled { top: 380px; left: 480px; }
-      .s4 .win { top: 48px; right: 48px; width: 320px; opacity: 0.92; }
+      .s4 .win { top: 64px; right: 48px; width: 360px; }
+      .s4 .ep-grey { top: 250px; left: 300px; transition: none; }
+      .s4 .ep-next { top: 300px; left: 640px; }
+      .s4 .ep-other { top: 220px; left: 900px; }
+      .s4 .grey-note { position: absolute; top: 290px; left: 262px; font-size: 13px; color: #9a9aa2; opacity: 0; }
+      .s6 .win { top: 48px; right: 48px; width: 320px; opacity: 0.92; }
       /* clear of the bottom caption */
-      .s4 .chat-panel { bottom: 92px; width: 760px; max-height: none; }
-      .s4 .chat-line { margin-bottom: 2px; }
-      .s4 .chat-input-hint { bottom: 70px; }
-      .s5 .win { bottom: 48px; right: 48px; width: 360px; }
+      .s6 .chat-panel { bottom: 92px; width: 760px; max-height: none; }
+      .s6 .chat-line { margin-bottom: 2px; }
+      .s6 .chat-input-hint { bottom: 70px; }
+      .s5 .win { top: 140px; right: 48px; width: 400px; }
       .s5 .enter-hint {
         position: absolute;
         bottom: 188px;
@@ -174,7 +179,7 @@
     <div id="scene1" class="scene s1">
       <div class="game-backdrop"></div>
       <div class="duty-title">Keybound Brawler · MOCK SCENE</div>
-      <div class="beat-label">Settings — fill, delay, target, wins, words</div>
+      <div class="beat-label">Settings — fill, delay, auto-send, target, wins, words</div>
       <div class="dalamud-window win">
         <div class="dalamud-title">Keybound Assist</div>
         <div class="dalamud-body">
@@ -191,6 +196,10 @@
             </div>
           </div>
           <p class="text-disabled">Each character draws a new delay in this range. Equal ends = fixed.</p>
+          <label class="row">
+            <input type="checkbox" class="checkbox" disabled />
+            Send the word automatically
+          </label>
           <div class="combo-row" id="s1-target-row">
             <div class="label">Target</div>
             <select id="s1-target">
@@ -268,32 +277,51 @@
 
     <div id="scene4" class="scene s4">
       <div class="game-backdrop"></div>
+      <div class="duty-title">Keybound Brawler</div>
+      <div class="beat-label">Grey box — the word is dropped, the next one picked</div>
+      <div class="duty-hud">
+        <div class="enemy-prompt ep-grey" id="s4-grey">explosion</div>
+        <div class="grey-note" id="s4-note">box went grey → cleared, never a target</div>
+        <div class="enemy-prompt ep-next" id="s4-next">meteor</div>
+        <div class="enemy-prompt ep-other">thunderclap</div>
+        <div class="input-bar" id="s4-input">e</div>
+      </div>
+      <div class="dalamud-window win">
+        <div class="dalamud-title">Keybound Assist</div>
+        <div class="dalamud-body">
+          <p class="status-line" id="s4-status">Typing 'explosion'.</p>
+        </div>
+      </div>
+    </div>
+
+    <div id="scene6" class="scene s6">
+      <div class="game-backdrop"></div>
       <div class="duty-title">Any territory</div>
       <div class="beat-label">/keyboundassist — status, on/off, usage</div>
-      <div class="chat-panel" id="s4-chat">
-        <div class="chat-line echo" data-at="8.82">&gt; /keyboundassist on</div>
-        <div class="chat-line echo" data-at="9.02">&gt; /keyboundassist status</div>
-        <div class="chat-line plugin" data-at="9.22">[Keybound Assist] Not in Keybound Brawler.</div>
-        <div class="chat-line plugin" data-at="9.38">[Keybound Assist] activity: 48 timer resets, 0 consecutive failures, duty agent cleared, last idle 2.9s.</div>
-        <div class="chat-line plugin" data-at="9.54">[Keybound Assist] casts: none.</div>
-        <div class="chat-line echo" data-at="9.74">&gt; /keyboundassist off</div>
-        <div class="chat-line echo" data-at="9.94">&gt; /keyboundassist status</div>
-        <div class="chat-line plugin" data-at="10.14">[Keybound Assist] Assist is off.</div>
-        <div class="chat-line plugin" data-at="10.30">[Keybound Assist] activity: 48 timer resets, 0 consecutive failures, duty agent cleared, last idle 2.9s.</div>
-        <div class="chat-line plugin" data-at="10.46">[Keybound Assist] casts: none.</div>
-        <div class="chat-line echo" data-at="10.70">&gt; /keyboundassist help</div>
-        <div class="chat-line plugin" data-at="10.90">[Keybound Assist] Usage: /keyboundassist [on|off|status]</div>
+      <div class="chat-panel" id="s6-chat">
+        <div class="chat-line echo" data-at="11.22">&gt; /keyboundassist on</div>
+        <div class="chat-line echo" data-at="11.42">&gt; /keyboundassist status</div>
+        <div class="chat-line plugin" data-at="11.62">[Keybound Assist] Not in Keybound Brawler.</div>
+        <div class="chat-line plugin" data-at="11.78">[Keybound Assist] activity: 48 timer resets, 0 consecutive failures, duty agent cleared, last idle 2.9s.</div>
+        <div class="chat-line plugin" data-at="11.94">[Keybound Assist] casts: none.</div>
+        <div class="chat-line echo" data-at="12.14">&gt; /keyboundassist off</div>
+        <div class="chat-line echo" data-at="12.34">&gt; /keyboundassist status</div>
+        <div class="chat-line plugin" data-at="12.54">[Keybound Assist] Assist is off.</div>
+        <div class="chat-line plugin" data-at="12.70">[Keybound Assist] activity: 48 timer resets, 0 consecutive failures, duty agent cleared, last idle 2.9s.</div>
+        <div class="chat-line plugin" data-at="12.86">[Keybound Assist] casts: none.</div>
+        <div class="chat-line echo" data-at="13.10">&gt; /keyboundassist help</div>
+        <div class="chat-line plugin" data-at="13.30">[Keybound Assist] Usage: /keyboundassist [on|off|status]</div>
       </div>
       <div class="chat-input-hint">Illustrative chat lines — not a real client log</div>
       <div class="dalamud-window win">
         <div class="dalamud-title">Keybound Assist</div>
         <div class="dalamud-body">
           <label class="row">
-            <input type="checkbox" class="checkbox" id="s4-check" checked disabled />
+            <input type="checkbox" class="checkbox" id="s6-check" checked disabled />
             Fill prompts for me
           </label>
           <div class="separator"></div>
-          <p class="status-line" id="s4-status">Not in Keybound Brawler.</p>
+          <p class="status-line" id="s6-status">Not in Keybound Brawler.</p>
         </div>
       </div>
     </div>
@@ -301,16 +329,33 @@
     <div id="scene5" class="scene s5">
       <div class="game-backdrop"></div>
       <div class="duty-title">Keybound Brawler</div>
-      <div class="beat-label">Press Enter — plugin stops; you submit</div>
+      <div class="beat-label">Word complete — you press Enter, or turn on auto-send</div>
       <div class="duty-hud">
-        <div class="enemy-prompt" style="top: 280px; left: 520px">slash</div>
+        <div class="enemy-prompt" id="s5-prompt" style="top: 280px; left: 420px">slash</div>
+        <div class="enemy-prompt" style="top: 330px; left: 640px">meteor</div>
         <div class="input-bar" id="s5-input">slash</div>
-        <div class="enter-hint" id="s5-enter-hint">Press Enter to submit (player only)</div>
+        <div class="enter-hint" id="s5-enter-hint">Press Enter to submit (auto-send is off, the default)</div>
       </div>
       <div class="dalamud-window win">
         <div class="dalamud-title">Keybound Assist</div>
         <div class="dalamud-body">
-          <p class="status-line">'slash' is typed. Press Enter.</p>
+          <label class="row" id="s5-auto-row">
+            <input type="checkbox" class="checkbox" id="s5-auto" disabled />
+            Send the word automatically
+          </label>
+          <div id="s5-delay" style="display: none">
+            <div class="delay-range-row">
+              <div class="label">Delay before sending (ms)</div>
+              <div class="delay-range-values">
+                <input type="number" value="300" disabled />
+                <span class="sep">—</span>
+                <input type="number" value="500" disabled />
+              </div>
+            </div>
+            <p class="text-disabled">Waited after the last letter, drawn fresh per word. Default 300-500.</p>
+          </div>
+          <div class="separator"></div>
+          <p class="status-line" id="s5-status">'slash' is typed. Press Enter.</p>
         </div>
       </div>
     </div>
@@ -331,47 +376,52 @@
 
     <script>
       const scenes = [
-        { id: "scene1", start: 0, end: 3.0, caption: "Settings window — Fill prompts, delay range, Threat target, wins, words seen" },
-        { id: "scene2", start: 2.6, end: 6.1, caption: "In-duty typing — one character at a time into KTGInput" },
-        { id: "scene3", start: 5.7, end: 9.1, caption: "Cryptic Communications read + Nearest enemy targeting" },
-        { id: "scene4", start: 8.6, end: 12.0, caption: "Commands — /keyboundassist status, on/off, and usage in chat" },
-        { id: "scene5", start: 11.6, end: 15.0, caption: "Word complete — plugin stops; you press Enter" },
+        { id: "scene1", start: 0, end: 2.6, caption: "Settings window — Fill prompts, delay range, auto-send, Threat target, wins, words seen" },
+        { id: "scene2", start: 2.2, end: 4.6, caption: "In-duty typing — one character at a time into KTGInput" },
+        { id: "scene3", start: 4.2, end: 6.6, caption: "Cryptic Communications read + Nearest enemy targeting" },
+        { id: "scene4", start: 6.2, end: 8.8, caption: "Greyed-out box — the half-typed word is cleared and the next target typed" },
+        { id: "scene5", start: 8.4, end: 11.6, caption: "Word complete — press Enter, or auto-send after a fresh 300–500 ms delay" },
+        { id: "scene6", start: 11.2, end: 15.0, caption: "Commands — /keyboundassist status, on/off, and usage in chat" },
       ];
 
       const boltChars = "bolt";
       const strikeChars = "strike";
 
+      const S5X = 857, S5Y = 200;
+      const explosionChars = "explosion";
+      const meteorChars = "meteor";
+      const GREY_AT = 7.3;
+      const AUTO_CLICK = 9.3;
+      const SENT_AT = AUTO_CLICK + 0.412;
+
       const clicks = [
         { t: 0.68, x: 89, y: 208 },
-        { t: 1.32, x: 197, y: 270 },
-        { t: 2.04, x: 161, y: 342 },
-        { t: 5.96, x: 950, y: 150 },
-        { t: 9.39, x: 180, y: 580 },
-        { t: 13.29, x: 640, y: 588 },
-        { t: 13.86, x: 640, y: 520 },
+        { t: 1.32, x: 197, y: 262 },
+        { t: 2.04, x: 161, y: 370 },
+        { t: 4.45, x: 950, y: 150 },
+        { t: AUTO_CLICK, x: S5X, y: S5Y },
+        { t: 11.79, x: 180, y: 580 },
       ];
 
       const cursorPath = [
         { t: 0.25, x: 640, y: 420 },
         { t: 0.61, x: 89, y: 208 },
         { t: 1.11, x: 89, y: 208 },
-        { t: 1.25, x: 197, y: 270 },
-        { t: 1.82, x: 205, y: 270 },
-        { t: 1.96, x: 161, y: 342 },
+        { t: 1.25, x: 197, y: 262 },
+        { t: 1.82, x: 205, y: 262 },
+        { t: 1.96, x: 161, y: 370 },
         { t: 2.39, x: 640, y: 420 },
-        { t: 2.86, x: 900, y: 360 },
-        { t: 4.29, x: 220, y: 248 },
-        { t: 5.71, x: 640, y: 320 },
-        { t: 5.89, x: 950, y: 150 },
-        { t: 6.57, x: 700, y: 318 },
-        { t: 8.57, x: 200, y: 560 },
-        { t: 9.14, x: 180, y: 580 },
-        { t: 9.43, x: 180, y: 580 },
-        { t: 11.43, x: 640, y: 400 },
-        { t: 12.29, x: 720, y: 520 },
-        { t: 13.14, x: 640, y: 588 },
-        { t: 13.79, x: 640, y: 520 },
-        { t: 14.64, x: 720, y: 620 },
+        { t: 4.2, x: 640, y: 320 },
+        { t: 4.38, x: 950, y: 150 },
+        { t: 5.2, x: 700, y: 318 },
+        { t: 8.6, x: 700, y: 420 },
+        { t: 9.15, x: S5X, y: S5Y },
+        { t: 9.5, x: S5X, y: S5Y },
+        { t: 10.6, x: 760, y: 470 },
+        { t: 11.3, x: 200, y: 560 },
+        { t: 11.7, x: 180, y: 580 },
+        { t: 12.0, x: 180, y: 580 },
+        { t: 14.0, x: 640, y: 400 },
       ];
 
       function easeInOutCubic(x) {
@@ -499,8 +549,8 @@
         }
 
         const s2Opacity = sceneMotion(t, scenes[1].start, scenes[1].end).opacity;
-        if (s2Opacity > 0.05 && t >= 2.86 && t <= 6.1) {
-          const local = t - 3.0;
+        if (s2Opacity > 0.05) {
+          const local = t - 2.5;
           const n = Math.min(boltChars.length, Math.max(0, Math.floor(local * 2.5)));
           const text = boltChars.slice(0, n);
           const input = document.getElementById("s2-input");
@@ -510,21 +560,66 @@
           const prompt = document.getElementById("s2-prompt");
           prompt.style.transform = n > 0 ? "scale(1.03)" : "";
           prompt.style.boxShadow = n > 0 ? "0 0 16px rgba(125, 216, 125, 0.35)" : "";
+          document.getElementById("s2-status").textContent = n >= boltChars.length ? "'bolt' is typed. Press Enter." : "Typing 'bolt'.";
         }
 
         const s3Opacity = sceneMotion(t, scenes[2].start, scenes[2].end).opacity;
-        if (s3Opacity > 0.05 && t >= 5.86 && t <= 9.1) {
-          const local = t - 6.0;
+        if (s3Opacity > 0.05) {
+          const local = t - 4.5;
           const n = Math.min(strikeChars.length, Math.max(2, Math.floor(local * 2.2)));
           document.getElementById("s3-input").textContent = strikeChars.slice(0, n);
-          const near = document.getElementById("s3-prompt");
-          near.style.transform = t >= 6.0 ? "scale(1.04)" : "";
-          document.getElementById("s3-target-row").classList.toggle("control-press", pressActive(t, 5.96));
+          document.getElementById("s3-prompt").style.transform = t >= 4.5 ? "scale(1.04)" : "";
+          document.getElementById("s3-target-row").classList.toggle("control-press", pressActive(t, 4.45));
         }
 
         const s4Opacity = sceneMotion(t, scenes[3].start, scenes[3].end).opacity;
         if (s4Opacity > 0.05) {
-          const lines = document.querySelectorAll("#s4-chat .chat-line");
+          const grey = t >= GREY_AT;
+          const input = document.getElementById("s4-input");
+          let text;
+          if (!grey) text = explosionChars.slice(0, clamp(1 + Math.floor((t - 6.4) * 3.5), 1, 5));
+          else text = meteorChars.slice(0, clamp(Math.floor((t - GREY_AT - 0.25) * 3.5) + 1, 0, meteorChars.length));
+          input.innerHTML = text + (caretVisible(t) ? '<span class="typing-caret"></span>' : "");
+          document.getElementById("s4-grey").classList.toggle("grey", grey);
+          document.getElementById("s4-next").classList.toggle("shortest", grey);
+          document.getElementById("s4-note").style.opacity = grey ? "1" : "0";
+          const status = document.getElementById("s4-status");
+          if (!grey) status.textContent = "Typing 'explosion'.";
+          else if (text.length === 0) status.textContent = "Cleared 'explo' - its box went grey.";
+          else status.textContent = "Typing 'meteor'.";
+        }
+
+        const s5Opacity = sceneMotion(t, scenes[4].start, scenes[4].end).opacity;
+        if (s5Opacity > 0.05) {
+          const on = t >= AUTO_CLICK;
+          const sent = t >= SENT_AT;
+          document.getElementById("s5-auto").checked = on;
+          document.getElementById("s5-delay").style.display = on ? "" : "none";
+          document.getElementById("s5-auto-row").classList.toggle("control-press", pressActive(t, AUTO_CLICK));
+          const input = document.getElementById("s5-input");
+          const hint = document.getElementById("s5-enter-hint");
+          const status = document.getElementById("s5-status");
+          document.getElementById("s5-prompt").style.opacity = sent ? "0" : "1";
+          if (!on) {
+            input.textContent = "slash";
+            hint.textContent = "Press Enter to submit (auto-send is off, the default)";
+            status.textContent = "'slash' is typed. Press Enter.";
+          } else if (!sent) {
+            input.textContent = "slash";
+            hint.textContent = "Auto-send on — waiting the drawn delay";
+            status.textContent = "'slash' is typed. Sending in 412 ms.";
+          } else {
+            const n = clamp(Math.floor((t - SENT_AT - 0.3) * 3.5) + 1, 0, meteorChars.length);
+            input.textContent = meteorChars.slice(0, n);
+            hint.textContent = "Sent by the field's own Enter handler — no key pressed";
+            status.textContent = t < SENT_AT + 0.3 ? "Sent 'slash'." : "Typing 'meteor'.";
+          }
+          input.classList.toggle("focused", !sent);
+        }
+
+        const s6Opacity = sceneMotion(t, scenes[5].start, scenes[5].end).opacity;
+        if (s6Opacity > 0.05) {
+          const lines = document.querySelectorAll("#s6-chat .chat-line");
           for (const line of lines) {
             const at = parseFloat(line.getAttribute("data-at"));
             const p = clamp((t - at) / 0.28, 0, 1);
@@ -532,28 +627,17 @@
             line.style.opacity = String(e);
             line.style.transform = `translateY(${6 * (1 - e)}px)`;
           }
-          const s4Check = document.getElementById("s4-check");
-          s4Check.checked = t < 9.74;
-          document.getElementById("s4-status").textContent = t < 9.74 ? "Not in Keybound Brawler." : "Assist is off.";
-        }
-
-        const s5Opacity = sceneMotion(t, scenes[4].start, scenes[4].end).opacity;
-        if (s5Opacity > 0.05) {
-          const hint = document.getElementById("s5-enter-hint");
-          const input = document.getElementById("s5-input");
-          const pulse = t >= 13.71 && t <= 14.43 ? 0.5 + 0.5 * Math.sin((t - 13.71) * 8) : t >= 13.29 ? 0.85 : 1;
-          hint.style.opacity = String(pulse);
-          hint.classList.toggle("pulse", t >= 13.71);
-          input.classList.toggle("focused", t >= 13.14 && t <= 14.29);
+          document.getElementById("s6-check").checked = t < 12.14;
+          document.getElementById("s6-status").textContent = t < 12.14 ? "Not in Keybound Brawler." : "Assist is off.";
         }
 
         const cursor = document.getElementById("mock-cursor");
         const pos = cursorAt(t);
         const showCursor =
-          (t >= 0.2 && t <= 2.6) ||
-          (t >= 5.6 && t <= 6.8) ||
-          (t >= 8.6 && t <= 11.3) ||
-          (t >= 11.8 && t <= 14.7);
+          (t >= 0.2 && t <= 2.4) ||
+          (t >= 4.1 && t <= 5.2) ||
+          (t >= 8.6 && t <= 10.6) ||
+          (t >= 11.3 && t <= 14.0);
         cursor.classList.toggle("visible", showCursor);
         cursor.style.transform = `translate(${pos.x}px, ${pos.y}px)`;
         const nc = nearClick(t, 0.08);
