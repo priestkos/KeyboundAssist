@@ -166,16 +166,6 @@
             <input type="checkbox" class="checkbox" id="s1-check" checked />
             Fill prompts for me
           </label>
-          <label class="row" id="s1-keep-row">
-            <input type="checkbox" class="checkbox" id="s1-keep" />
-            Keep the activity timer alive
-          </label>
-          <p class="text-disabled">Clears the duty's own inactivity counters. The plugin still sends no keys.</p>
-          <label class="row" id="s1-punct-row">
-            <input type="checkbox" class="checkbox" id="s1-punct" checked />
-            Ignore punctuation
-          </label>
-          <p class="text-disabled">Types "dontstop" for "don't-stop!". Turn it off if words stop matching.</p>
           <div class="delay-range-row" id="s1-delay-row">
             <div class="label">Delay per character (ms)</div>
             <div class="delay-range-values">
@@ -310,7 +300,7 @@
 
     <script>
       const scenes = [
-        { id: "scene1", start: 0, end: 3.0, caption: "Settings window — Fill prompts, keep-alive, punctuation, delay range, target" },
+        { id: "scene1", start: 0, end: 3.0, caption: "Settings window — Fill prompts, delay range, target" },
         { id: "scene2", start: 2.6, end: 6.1, caption: "In-duty typing — one character at a time into KTGInput" },
         { id: "scene3", start: 5.7, end: 9.1, caption: "Cryptic Communications read + Nearest enemy targeting" },
         { id: "scene4", start: 8.6, end: 12.0, caption: "Commands — /keyboundassist status, on/off, and usage in chat" },
@@ -322,8 +312,8 @@
 
       const clicks = [
         { t: 0.68, x: 104, y: 198 },
-        { t: 1.32, x: 248, y: 318 },
-        { t: 2.04, x: 176, y: 368 },
+        { t: 1.32, x: 197, y: 206 },
+        { t: 2.04, x: 161, y: 287 },
         { t: 5.96, x: 120, y: 118 },
         { t: 9.39, x: 180, y: 580 },
         { t: 13.29, x: 640, y: 588 },
