@@ -14,7 +14,7 @@ These images are **mock-ups** (HTML rendered to PNG). They are not real in-game 
 
 | | |
 | --- | --- |
-| ![Config window mock-up](docs/screenshots/01-config-window.png) | **Settings window** — master switch (Fill prompts for me), delay range (130–1000 ms, default 150–300), target combo, help text, and live status line. |
+| ![Config window mock-up](docs/screenshots/01-config-window.png) | **Settings window** — master switch (Fill prompts for me), delay range (130–1000 ms, default 150–300), target combo set to Threat with its help line, help text, live status line, wins (Sync from achievements, manual count) and the Words seen list. |
 | ![In-duty typing mock-up](docs/screenshots/02-duty-typing.png) | **Prompt fill** — enemy prompt labels and the duty input field with partial typing; status shows the active target word. |
 | ![Cryptic & nearest mock-up](docs/screenshots/03-cryptic-nearest.png) | **Cryptic Communications & nearest target** — static tiles over a veiled label, nearest-enemy targeting, typing in progress. |
 | ![Chat commands mock-up](docs/screenshots/04-chat-commands.png) | **Commands** — `/keyboundassist status` output in chat, `on`/`off` toggles (no chat echo), and usage text for unknown args. |

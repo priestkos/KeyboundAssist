@@ -6,20 +6,44 @@
     <link rel="stylesheet" href="common.css" />
     <style>
       .dalamud-window {
-        top: 100px;
-        left: 72px;
-        min-width: 420px;
+        top: 24px;
+        left: 24px;
+        width: 460px;
+        height: 640px;
+        overflow: hidden;
       }
+      /* window resized shorter than its content, as in ImGui: the body scrolls (bottom of the word list is below the fold) */
+      .dalamud-body { height: calc(100% - 34px); box-sizing: border-box; overflow: hidden; padding-right: 22px !important; position: relative; }
+      .scrollbar { position: absolute; top: 38px; right: 3px; bottom: 4px; width: 10px; background: #1f1f24; border-radius: 5px; }
+      .scrollbar::after { content: ""; position: absolute; top: 0; left: 1px; right: 1px; height: 92%; background: #4a4a55; border-radius: 4px; }
+      /* ImGui spacing is tighter than the shared mock-up defaults; keeps the full window inside 720 px */
+      .dalamud-body { padding: 10px 16px 12px; }
+      .dalamud-body label.row { margin-bottom: 8px; }
+      .combo-row { margin-bottom: 8px; }
+      .separator { margin: 8px 0; }
+      .help-text { margin: 0; }
+      .wins-row { display: flex; align-items: center; gap: 10px; margin-bottom: 4px; }
+      .imgui-button { padding: 3px 10px; font-size: 13px; color: #eee; background: #2f4a66; border: 1px solid #3d5f82; border-radius: 3px; }
+      .wins-sync { margin: 0 0 8px; font-size: 12px; color: #777; }
+      .text-disabled.under-combo { margin: -2px 0 8px; font-size: 12px; }
+      .input-int-row { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; color: #ccc; }
+      .input-int-row .box { display: flex; align-items: center; width: 120px; background: #2a2a32; border: 1px solid #555; border-radius: 3px; }
+      .input-int-row .box span { flex: 1; padding: 3px 6px; color: #8ec8ff; font-variant-numeric: tabular-nums; }
+      .input-int-row .box b { width: 22px; text-align: center; color: #ccc; font-weight: 400; border-left: 1px solid #555; }
+      .collapsing-header { padding: 4px 8px; background: #2f4a66; border-radius: 2px; color: #eee; }
+      .collapsing-header::before { content: "\25BE  "; }
+      .words-child { height: 200px; margin-top: 6px; padding: 4px 8px; border: 1px solid #444; border-radius: 2px; overflow: hidden; font-size: 13px; line-height: 1.5; white-space: pre; font-variant-numeric: tabular-nums; color: #ddd; }
     </style>
   </head>
   <body>
     <div class="game-backdrop"></div>
     <div class="duty-title">Keybound Brawler · MOCK SCENE</div>
     <div class="mockup-banner">Mock-up</div>
-    <div class="scene-label">Settings window — master switch, delay range, target, live status</div>
+    <div class="scene-label">Settings window — master switch, delay range, Threat target, status, wins, words seen</div>
 
     <div class="dalamud-window">
       <div class="dalamud-title">Keybound Assist</div>
+      <div class="scrollbar"></div>
       <div class="dalamud-body">
         <label class="row">
           <input type="checkbox" class="checkbox" checked disabled />
@@ -39,10 +63,12 @@
         <div class="combo-row">
           <div class="label">Target</div>
           <select disabled>
-            <option selected>Shortest prompt</option>
+            <option>Shortest prompt</option>
             <option>Nearest enemy</option>
+            <option selected>Threat</option>
           </select>
         </div>
+        <p class="text-disabled under-combo">Needles Cactuar, casting adds, Cactuars, adds, then the boss; lowest first.</p>
 
         <div class="separator"></div>
         <p class="help-text">
@@ -50,6 +76,30 @@
         </p>
         <div class="separator"></div>
         <p class="status-line">Typing 'slash'.</p>
+
+        <div class="separator"></div>
+        <div class="wins-row">
+          <span>Wins: 41</span>
+          <button class="imgui-button" disabled>Sync from achievements</button>
+        </div>
+        <p class="wins-sync">Achievements: 37 clears, read 14:52.</p>
+        <label class="row">
+          <input type="checkbox" class="checkbox" checked disabled />
+          Use a manual count
+        </label>
+        <div class="input-int-row">
+          <div class="box"><span>41</span><b>-</b><b>+</b></div>
+          Manual wins
+        </div>
+
+        <div class="collapsing-header">Words seen (7)</div>
+        <div class="words-child">   19  slash
+   14  bolt
+   11  strike
+    8  guardian
+    6  meteor
+    4  thunderclap
+    3  veil</div>
       </div>
     </div>
   </body>

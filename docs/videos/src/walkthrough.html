@@ -56,7 +56,19 @@
         padding: 8px 16px;
       }
 
-      .s1 .win { top: 88px; left: 64px; min-width: 420px; }
+      .s1 .win { top: 88px; left: 64px; width: 460px; }
+      /* ImGui-tight spacing so the grown window stays above the caption */
+      .s1 .dalamud-body { padding: 10px 16px 12px; }
+      .s1 .dalamud-body label.row { margin-bottom: 8px; }
+      .s1 .combo-row { margin-bottom: 8px; }
+      .s1 .separator { margin: 8px 0; }
+      .s1 .help-text { margin: 0; }
+      .s1 .text-disabled.under-combo { margin: -2px 0 8px; font-size: 12px; }
+      .s1 .wins-row { display: flex; align-items: center; gap: 10px; margin-bottom: 4px; }
+      .s1 .imgui-button { padding: 3px 10px; font-size: 13px; color: #eee; background: #2f4a66; border: 1px solid #3d5f82; border-radius: 3px; }
+      .s1 .wins-sync { margin: 0 0 8px; font-size: 12px; color: #777; }
+      .s1 .collapsing-header { padding: 4px 8px; background: #2f4a66; border-radius: 2px; color: #eee; }
+      .s1 .collapsing-header::before { content: "\25B8  "; }
       .s2 .win { top: 48px; right: 48px; width: 340px; }
       .s2 .ep1 { top: 220px; left: 180px; }
       .s2 .ep2 { top: 280px; left: 520px; }
@@ -158,7 +170,7 @@
     <div id="scene1" class="scene s1">
       <div class="game-backdrop"></div>
       <div class="duty-title">Keybound Brawler · MOCK SCENE</div>
-      <div class="beat-label">Settings — fill, delay, target, status</div>
+      <div class="beat-label">Settings — fill, delay, target, wins, words</div>
       <div class="dalamud-window win">
         <div class="dalamud-title">Keybound Assist</div>
         <div class="dalamud-body">
@@ -180,12 +192,25 @@
             <select id="s1-target">
               <option value="shortest" selected>Shortest prompt</option>
               <option value="nearest">Nearest enemy</option>
+              <option value="threat">Threat</option>
             </select>
           </div>
+          <p class="text-disabled under-combo" id="s1-threat-help" style="display: none">Needles Cactuar, casting adds, Cactuars, adds, then the boss; lowest first.</p>
           <div class="separator"></div>
           <p class="help-text">The plugin types the word and stops. Press Enter yourself to submit it, and the next prompt is filled once the field is empty again.</p>
           <div class="separator"></div>
           <p class="status-line" id="s1-status">Typing 'slash'.</p>
+          <div class="separator"></div>
+          <div class="wins-row">
+            <span>Wins: 37</span>
+            <button class="imgui-button" disabled>Sync from achievements</button>
+          </div>
+          <p class="wins-sync">Achievements: 37 clears, read 14:52.</p>
+          <label class="row">
+            <input type="checkbox" class="checkbox" disabled />
+            Use a manual count
+          </label>
+          <div class="collapsing-header">Words seen (7)</div>
         </div>
       </div>
     </div>
@@ -300,7 +325,7 @@
 
     <script>
       const scenes = [
-        { id: "scene1", start: 0, end: 3.0, caption: "Settings window — Fill prompts, delay range, target" },
+        { id: "scene1", start: 0, end: 3.0, caption: "Settings window — Fill prompts, delay range, Threat target, wins, words seen" },
         { id: "scene2", start: 2.6, end: 6.1, caption: "In-duty typing — one character at a time into KTGInput" },
         { id: "scene3", start: 5.7, end: 9.1, caption: "Cryptic Communications read + Nearest enemy targeting" },
         { id: "scene4", start: 8.6, end: 12.0, caption: "Commands — /keyboundassist status, on/off, and usage in chat" },
@@ -311,9 +336,9 @@
       const strikeChars = "strike";
 
       const clicks = [
-        { t: 0.68, x: 104, y: 198 },
+        { t: 0.68, x: 89, y: 144 },
         { t: 1.32, x: 197, y: 206 },
-        { t: 2.04, x: 161, y: 287 },
+        { t: 2.04, x: 161, y: 278 },
         { t: 5.96, x: 120, y: 118 },
         { t: 9.39, x: 180, y: 580 },
         { t: 13.29, x: 640, y: 588 },
@@ -322,12 +347,12 @@
 
       const cursorPath = [
         { t: 0.25, x: 640, y: 420 },
-        { t: 0.61, x: 104, y: 198 },
-        { t: 1.11, x: 104, y: 198 },
-        { t: 1.25, x: 248, y: 318 },
-        { t: 1.82, x: 280, y: 318 },
-        { t: 1.96, x: 176, y: 368 },
-        { t: 2.39, x: 260, y: 420 },
+        { t: 0.61, x: 89, y: 144 },
+        { t: 1.11, x: 89, y: 144 },
+        { t: 1.25, x: 197, y: 206 },
+        { t: 1.82, x: 205, y: 206 },
+        { t: 1.96, x: 161, y: 278 },
+        { t: 2.39, x: 640, y: 420 },
         { t: 2.86, x: 900, y: 360 },
         { t: 4.29, x: 220, y: 248 },
         { t: 5.71, x: 640, y: 320 },
@@ -459,11 +484,8 @@
           delayMin.value = "150";
           delayMax.value = String(maxDelay);
 
-          if (t >= 2.04 && t < 2.35) {
-            target.value = "nearest";
-          } else {
-            target.value = "shortest";
-          }
+          target.value = t >= 2.04 ? "threat" : "shortest";
+          document.getElementById("s1-threat-help").style.display = t >= 2.04 ? "" : "none";
 
           checkRow.classList.toggle("control-press", pressActive(t, 0.68));
           delayRow.classList.toggle("control-press", pressActive(t, 1.32) || (t >= 1.32 && t <= 1.85));
