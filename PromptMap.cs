@@ -7,7 +7,7 @@ internal enum TargetPriority { ShortestPrompt, NearestEnemy, Threat }
 // One enemy prompt. No Dalamud types, so tests/ compiles this file with the decision logic.
 internal readonly record struct Prompt(uint NodeId, string Text, bool Masked,
     float ScreenX, float ScreenY, float Scale, float? Distance, bool Defense = false,
-    bool Casting = false, bool Needles = false, bool Cactuar = false);
+    bool Casting = false, bool Needles = false, bool Cactuar = false, bool Grey = false, ushort Label = 0);
 
 internal readonly record struct ActorScreen(uint Entity, Vector2 Screen, Vector3 World);
 

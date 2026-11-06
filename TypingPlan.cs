@@ -32,7 +32,7 @@ internal static class TypingPlan
         // otherwise it would match an empty field and report Ready with no text.
         var matches = prompts
             .Select(p => (Prompt: p, Text: Typeable(p.Text)))
-            .Where(p => p.Text.Length > 0 && p.Text.StartsWith(wanted, StringComparison.OrdinalIgnoreCase))
+            .Where(p => !p.Prompt.Grey && p.Text.Length > 0 && p.Text.StartsWith(wanted, StringComparison.OrdinalIgnoreCase))
             .ToArray();
         if (matches.Length == 0) return null;
         // An unmatched prompt has no distance and sorts last, so nearest-enemy falls back to the

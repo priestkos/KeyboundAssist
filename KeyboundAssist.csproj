@@ -14,7 +14,7 @@
     <Authors>PriestKos</Authors>
     <Name>KeyboundAssist</Name>
     <Punchline>Fills the Keybound Brawler prompt for you; you press Enter.</Punchline>
-    <Description>Reads the enemy prompts in the Keybound Brawler duty and writes the shortest one into the activity's own text field, one character at a time, stopping as soon as the word is complete. It never sends a keystroke: the player presses Enter to submit each word, and typing pauses while the duty prohibits input. An optional setting, off by default, sends the finished word itself after a randomised delay.</Description>
+    <Description>For research use only. Reads the enemy prompts in the Keybound Brawler duty and writes the shortest one into the activity's own text field, one character at a time, stopping as soon as the word is complete. It never sends a keystroke: the player presses Enter to submit each word, and typing pauses while the duty prohibits input. An optional setting, off by default, sends the finished word itself after a randomised delay.</Description>
     <Tags>keybound brawler;typing;gold saucer;assist</Tags>
     <RepoUrl>https://github.com/priestkos/KeyboundAssist</RepoUrl>
     <IconUrl>https://raw.githubusercontent.com/priestkos/KeyboundAssist/main/images/icon.png</IconUrl>

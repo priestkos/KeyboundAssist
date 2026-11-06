@@ -625,6 +625,70 @@ Check("gate-chat-focused-no-focus", chatField.FocusCalls == 0 && chatField.Write
         string.Join(",", sendGaps));
 }
 
+// ---- Greyed-out boxes: never a target, and our word is dropped the moment its box goes grey. ----
+{
+    Prompt G(string text, uint node = 0) => P(text, node: node) with { Grey = true };
+    Check("grey-never-chosen", Next("", [G("bomb", 1), P("constellation", node: 2)]).Target == "constellation",
+        Next("", [G("bomb", 1), P("constellation", node: 2)]).ToString());
+    Check("grey-only-waits", Next("", [G("bomb", 1)]).Kind == StepKind.Waiting, Next("", [G("bomb", 1)]).ToString());
+    var greyOnly = TickPlan.Step("", true, "Ready.", [G("bomb", 1)], new AssistState(null, false, null, null, 0), 1000, TargetPriority.ShortestPrompt);
+    Check("grey-only-nothing-typed", greyOnly.Action == TickAction.None, greyOnly.ToString());
+
+    var midBomb = new AssistState("bo", true, "bomb", null, 0);
+    var dropped = TickPlan.Step("bo", true, "Ready.", [G("bomb", 1), P("grunt", node: 2), P("explosion", node: 3)], midBomb, 1000,
+        TargetPriority.ShortestPrompt);
+    Check("grey-drops-our-word-now", dropped.Clear && dropped.Status.Contains("grey"), dropped.ToString());
+    var retarget = TickPlan.Step("", true, "Ready.", [G("bomb", 1), P("grunt", node: 2), P("explosion", node: 3)], dropped.State, 1016,
+        TargetPriority.ShortestPrompt);
+    Check("grey-retargets-by-order", retarget.Action == TickAction.Write && retarget.Next == 'g' && retarget.State.CurrentTarget == "grunt"
+        && retarget.State.SkipTarget == null, retarget.ToString());
+    var nearest = TickPlan.Step("", true, "Ready.", [G("bomb", 1), P("grunt", 30f, 2), P("explosion", 5f, 3)], dropped.State, 1016,
+        TargetPriority.NearestEnemy);
+    Check("grey-retargets-nearest", nearest.State.CurrentTarget == "explosion", nearest.ToString());
+
+    var continued = TickPlan.Step("bo", true, "Ready.", [G("bomb", 1), P("bomber", node: 2)], midBomb, 1000, TargetPriority.ShortestPrompt);
+    Check("grey-shared-prefix-continues", !continued.Clear && continued.Next == 'm' && continued.State.CurrentTarget == "bomber", continued.ToString());
+
+    var playerText = TickPlan.Step("bo", true, "Ready.", [G("bomb", 1), P("grunt", node: 2)], new AssistState(null, false, null, null, 0), 1000,
+        TargetPriority.ShortestPrompt);
+    Check("grey-player-text-kept", !playerText.Clear, playerText.ToString());
+
+    var greyLocked = TickPlan.Step("bo", false, "Typing prohibited (2s).", [G("bomb", 1), P("grunt", node: 2)], midBomb, 1000,
+        TargetPriority.ShortestPrompt);
+    Check("grey-locked-kept", !greyLocked.Clear, greyLocked.ToString());
+
+    // A finished word waiting for its auto-send is dropped too, and never sent.
+    var sendOn = new FrameSettings(TargetPriority.ShortestPrompt, 150, 300, AutoSubmit: true);
+    var waitField = new FakeField();
+    long w1 = 0, f1 = 0;
+    var armedSend = Frame.Run(new FrameContext(false, "", false, "bomb", true, "Ready.", [P("bomb", node: 1), P("grunt", node: 2)]), sendOn,
+        new AssistState("bomb", true, "bomb", null, 0), waitField, 1000, ref w1, ref f1, new Random(5)).State;
+    var greyedSend = Frame.Run(new FrameContext(false, "", false, "bomb", true, "Ready.", [G("bomb", 1), P("grunt", node: 2)]), sendOn,
+        armedSend, waitField, (armedSend.SubmitAt ?? 0) + 10, ref w1, ref f1, new Random(5));
+    Check("grey-drops-pending-send", waitField.Submits == 0 && waitField.Writes.SequenceEqual([""]) && greyedSend.State.SubmitAt == null,
+        $"{waitField.Submits} sends, writes {string.Join(",", waitField.Writes)}");
+
+    // End to end at 60 fps: "explosion" goes grey after 3 letters; the field is cleared on that frame and the next word typed.
+    var gField = new FakeField();
+    var gState = new AssistState(null, false, null, null, 0);
+    long gw = 0, gf = 0;
+    var gText = "";
+    long greyAt = -1, clearAt = -1;
+    for (long at = 300_000; at < 306_000; at += 16)
+    {
+        if (greyAt < 0 && gText.Length >= 3) greyAt = at;
+        Prompt[] shown = greyAt < 0 ? [P("explosion", node: 1), P("gruntingly", node: 2)] : [G("explosion", 1), P("gruntingly", node: 2)];
+        var before = gField.Writes.Count;
+        gState = Frame.Run(new FrameContext(false, "", false, gText, true, "Ready.", shown), new FrameSettings(TargetPriority.ShortestPrompt, 150, 300),
+            gState, gField, at, ref gw, ref gf, new Random(11)).State;
+        if (gField.Writes.Count == before) continue;
+        gText = gField.Writes[^1];
+        if (gText.Length == 0 && clearAt < 0) clearAt = at;
+    }
+    Check("sim-grey-cleared-same-frame", greyAt > 0 && clearAt == greyAt, $"grey {greyAt}, cleared {clearAt}");
+    Check("sim-grey-next-word", gText == "gruntingly", $"field ended as '{gText}'");
+}
+
 // ---- Threat order (AutoKeyboundBrawler's tiers) and the cast-bar mapping that feeds it. ----
 HashSet<string> cactuarSheet = new(StringComparer.OrdinalIgnoreCase) { "1,000 Needles" };
 Prompt T(uint node, string text, float y) => new(node, text, false, 0, y, 1f, null);

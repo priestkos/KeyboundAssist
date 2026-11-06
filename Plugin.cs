@@ -124,6 +124,12 @@ public sealed class Plugin : IDalamudPlugin
                               $"{ActivityKeepAlive.Failures} consecutive failures, duty agent " +
                               $"{(ActivityKeepAlive.DedicatedOk ? "cleared" : "unavailable")}, last idle " +
                               $"{(float.IsNaN(ActivityKeepAlive.LastIdleSeconds) ? "unavailable" : ActivityKeepAlive.LastIdleSeconds.ToString("0.0") + "s")}.");
+                if (GameState.InGame(ClientState))
+                {
+                    var shown = GameState.Prompts(GameGui, Objects, default, false);
+                    ChatGui.Print("[Keybound Assist] prompts: " + (shown.Length == 0 ? "none" :
+                        string.Join(", ", shown.Select(p => $"'{p.Text}' state {p.Label}{(p.Grey ? " grey" : "")}"))) + ".");
+                }
                 ChatGui.Print("[Keybound Assist] casts: " + (CastBar.Casts.Length == 0 ? "none" :
                     string.Join(", ", CastBar.Casts.Select(c => $"slot {c.Slot} '{c.Spell}'"))) + ".");
                 break;

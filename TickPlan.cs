@@ -37,6 +37,9 @@ internal static class TickPlan
     internal static TickOutcome Step(string field, bool allowed, string reason, Prompt[] prompts,
         AssistState state, long now, TargetPriority priority, bool autoSubmit = false)
     {
+        // A greyed-out box is never a target. The full list is kept only to see that our word went grey.
+        var greyed = prompts;
+        prompts = prompts.Where(p => !p.Grey).ToArray();
         var pool = prompts;
         var skipTarget = state.SkipTarget;
         var skipUntil = state.SkipUntil;
@@ -93,6 +96,11 @@ internal static class TickPlan
         var owned = field.Length > 0 && writeSeen && lastWritten != null &&
             string.Equals(field, lastWritten, StringComparison.OrdinalIgnoreCase);
         var orphaned = owned && TypingPlan.Choose(prompts, field, priority) == null;
+        // The word's box went grey and no live prompt continues it: drop it now, no grace - grey is a held state,
+        // not a blinking label - and the plan picks the next word by the selected target order.
+        if (orphaned && allowed && greyed.Any(p => p.Grey && TypingPlan.IsOwnedPrefix(field, p.Text)))
+            return new TickOutcome(new AssistState(null, false, null, skipTarget, skipUntil),
+                TickAction.Clear, '\0', $"Cleared '{field}' - its box went grey.");
         long? orphanSince = orphaned ? state.OrphanSince ?? now : null;
         if (orphaned && allowed && now - orphanSince >= OrphanMs)
             return new TickOutcome(new AssistState(null, false, null, skipTarget, skipUntil),

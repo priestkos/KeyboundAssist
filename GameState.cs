@@ -101,7 +101,8 @@ internal static unsafe class GameState
             var screenY = (float)node->ScreenY;
             prompts.Add(new Prompt(node->NodeId, text, masked,
                 node->ScreenX + node->Width * node->ScaleX / 2, screenY, node->ScaleX, null,
-                PromptMap.IsDefensePrompt(screenY, screenHeight)));
+                PromptMap.IsDefensePrompt(screenY, screenHeight), Grey: Grey(&component->UldManager, label),
+                Label: Label(&component->UldManager)));
         }
 
         if (!hasOrigin || prompts.Count == 0) return prompts.ToArray();
@@ -115,6 +116,20 @@ internal static unsafe class GameState
         }
         return PromptMap.WithDistances(prompts.ToArray(), actors, origin);
     }
+
+    // The shipped KTGEWord ULD draws each box in one of six timeline states: 17 blue, 101 white outline, 102 grey,
+    // 103 red, 104 green, 105 gold. Only state 102 tints the box fill (node 26) to -255/-255/-255 and dims the word
+    // (node 20) to alpha 204, so both are required: a misread can only miss a grey box, never drop a live word.
+    internal static bool Grey(AtkUldManager* manager, AtkResNode* label)
+    {
+        var fill = FindNode(manager, 26);
+        return fill != null && fill->AddRed == -255 && fill->AddGreen == -255 && fill->AddBlue == -255 &&
+               label != null && label->Color.A < 255;
+    }
+
+    // The component's active timeline label, for /keyboundassist status: 102 is the grey state.
+    internal static ushort Label(AtkUldManager* manager) =>
+        manager->RootNode != null && manager->RootNode->Timeline != null ? manager->RootNode->Timeline->ActiveLabelId : (ushort)0;
 
     private static bool Masked(AtkUldManager* manager)
     {
