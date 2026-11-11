@@ -9,6 +9,8 @@ namespace KeyboundAssist;
 internal sealed class AssistWindow(Configuration configuration, Action save, Func<string> status,
     Func<string> syncStatus, Action requestSync) : Window("Keybound Assist###KeyboundAssistMain")
 {
+    private static readonly string[] Targets = ["Shortest prompt", "Nearest enemy", "Threat"];
+
     public override void Draw()
     {
         var enabled = configuration.Enabled;
@@ -52,7 +54,7 @@ internal sealed class AssistWindow(Configuration configuration, Action save, Fun
 
         var priority = (int)configuration.Priority;
         ImGui.SetNextItemWidth(160f);
-        if (ImGui.Combo("Target", ref priority, new[] { "Shortest prompt", "Nearest enemy", "Threat" }, 3))
+        if (ImGui.Combo("Target", ref priority, Targets, Targets.Length))
         {
             configuration.Priority = (TargetPriority)priority;
             save();

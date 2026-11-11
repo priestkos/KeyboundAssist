@@ -5,7 +5,6 @@ using Dalamud.IoC;
 using Dalamud.Plugin;
 using Dalamud.Plugin.Services;
 using FFXIVClientStructs.FFXIV.Client.Game.UI;
-using FFXIVClientStructs.FFXIV.Component.GUI;
 using KTGTypeWordTextData = Lumina.Excel.Sheets.KTGTypeWordTextData;
 
 namespace KeyboundAssist;
