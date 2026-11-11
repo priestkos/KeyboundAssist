@@ -2,7 +2,8 @@ using System.Numerics;
 
 namespace KeyboundAssist;
 
-internal enum TargetPriority { ShortestPrompt, NearestEnemy, Threat }
+// Saved in the config by number: never renumber.
+internal enum TargetPriority { ShortestPrompt = 0, NearestEnemy = 1, Threat = 2 }
 
 // One enemy prompt. No Dalamud types, so tests/ compiles this file with the decision logic.
 internal readonly record struct Prompt(uint NodeId, string Text, bool Masked,
