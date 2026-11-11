@@ -112,12 +112,10 @@ internal static class TickPlan
         // can still lead into the barrier word, the plan simply continues into it. When it cannot, the
         // partial word is dropped - but only text this plugin wrote, only while typing is allowed, and
         // never a finished word, which is one Enter away from being submitted.
-        var barrier = BestBarrier(pool);
-        if (allowed && currentTarget != null && field.Length > 0 && barrier != null &&
-            !string.Equals(barrier, currentTarget, StringComparison.OrdinalIgnoreCase) &&
+        // step.Defense: some barrier word continues the field (Choose ranks those first), whatever the priority.
+        if (allowed && currentTarget != null && field.Length > 0 && !step.Defense && pool.Any(p => p.Defense) &&
             writeSeen && lastWritten != null && TypingPlan.IsOwnedPrefix(field, lastWritten) &&
             TypingPlan.IsOwnedPrefix(field, currentTarget) &&
-            !TypingPlan.IsOwnedPrefix(field, barrier) &&
             !PreparedEqual(field, currentTarget))
             return new TickOutcome(new AssistState(null, false, null, skipTarget, skipUntil),
                 TickAction.Clear, '\0', "Dropping the partial word for a barrier prompt.");
@@ -133,14 +131,6 @@ internal static class TickPlan
             ? new TickOutcome(nextState, TickAction.Write, step.Next, step.Status)
             : new TickOutcome(nextState, TickAction.None, '\0', step.Status);
     }
-
-    // The barrier word the plan would answer first: the shortest, as TypingPlan.Choose ranks it.
-    private static string? BestBarrier(Prompt[] pool) =>
-        pool.Where(p => p.Defense)
-            .OrderBy(p => TypingPlan.Typeable(p.Text).Length)
-            .ThenBy(p => p.NodeId)
-            .Select(p => p.Text)
-            .FirstOrDefault();
 
     private static bool PreparedEqual(string a, string b) =>
         string.Equals(TypingPlan.Typeable(a), TypingPlan.Typeable(b),

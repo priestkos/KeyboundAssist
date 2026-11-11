@@ -240,6 +240,35 @@ var sharedPrefix = TickPlan.Step("s", true, "Ready.", [P("sundae"), P("shield", 
 Check("loop-barrier-shares-prefix", !sharedPrefix.Clear && sharedPrefix.State.CurrentTarget == "shield",
     sharedPrefix.ToString());
 
+// Two barrier words: the one being typed is never dropped for the other, under any priority. Nearest mode
+// picks the closer shield while the shortest barrier is ward; a clear there would loop forever.
+foreach (var order in new[] { TargetPriority.NearestEnemy, TargetPriority.Threat, TargetPriority.ShortestPrompt })
+{
+    Prompt[] twoBarriers = [P("shield", 2f, 5, defense: true), P("ward", 9f, 6, defense: true)];
+    var twoState = new AssistState(null, false, null, null, 0);
+    var twoText = "";
+    var twoClears = 0;
+    for (var frame = 0; frame < 12 && twoClears < 3; frame++)
+    {
+        var outcome = TickPlan.Step(twoText, true, "Ready.", twoBarriers, twoState, 1000 + frame * 20, order);
+        twoState = outcome.State;
+        if (outcome.Clear) { twoClears++; twoText = ""; continue; }
+        if (outcome.Action != TickAction.Write) break;
+        twoText += outcome.Next;
+        twoState = twoState with { LastWritten = twoText, WriteSeen = false };
+    }
+    Check($"loop-two-barriers-complete-{order}", twoClears == 0 && twoText is "shield" or "ward",
+        $"'{twoText}', {twoClears} clears");
+}
+
+// A normal word's partial text that still leads into some barrier word is continued into it, not dropped,
+// even when another, shorter barrier word is up.
+var intoBarrier = TickPlan.Step("s", true, "Ready.",
+    [P("sundae"), P("shield", null, 9, defense: true), P("ward", null, 10, defense: true)],
+    new AssistState("s", true, "sundae", null, 0), 5000, TargetPriority.ShortestPrompt);
+Check("loop-barrier-any-shared-prefix", !intoBarrier.Clear && intoBarrier.State.CurrentTarget == "shield",
+    intoBarrier.ToString());
+
 // F5: deleting the last remaining character of a one-character prompt clears and skips it.
 var oneChar = new AssistState("x", true, "x", null, 0);
 var lastChar = TickPlan.Step("", true, "Ready.", [P("x")], oneChar, 5000, TargetPriority.ShortestPrompt);
