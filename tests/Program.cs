@@ -761,6 +761,61 @@ Check("threat-barrier-enemy-first", TypingPlan.Choose(atBarrier, "", TargetPrior
 var barrierNeedles = PromptMap.WithCasts([B(7, "cactuar", 200), B(8, "grunt", 680)], [(7u, "??? Needles")], cactuarSheet);
 Check("threat-needles-before-barrier-enemy", TypingPlan.Choose(barrierNeedles, "", TargetPriority.Threat)?.Text == "cactuar",
     TypingPlan.Choose(barrierNeedles, "", TargetPriority.Threat)?.Text ?? "null");
+// A barrier enemy and a higher-ranked enemy elsewhere, over many frames: each word is typed whole, never cleared,
+// in the right order. Scene(frame, finished) gives that frame's (slot, text, y) and casts; a finished word is
+// submitted (field empties, its prompt goes).
+(List<string> Done, int Clears) RunThreat(Func<int, List<string>, ((uint, string, float)[], (uint, string)[])> scene)
+{
+    var st = new AssistState(null, false, null, null, 0);
+    var field = "";
+    var done = new List<string>();
+    var clears = 0;
+    for (var frame = 0; frame < 400 && clears < 3; frame++)
+    {
+        var (words, casts) = scene(frame, done);
+        var shown = PromptMap.WithCasts(words.Where(w => !done.Contains(w.Item2)).Select(w => B(w.Item1, w.Item2, w.Item3) with { Defense = PromptMap.IsDefensePrompt(w.Item3, 1080) }).ToArray(),
+            casts, cactuarSheet);
+        var o = TickPlan.Step(field, true, "Ready.", shown, st, 1000 + frame * 20, TargetPriority.Threat);
+        st = o.State;
+        if (o.Clear) { clears++; field = ""; continue; }
+        if (o.Action == TickAction.Write)
+        {
+            field += o.Next;
+            st = st with { LastWritten = field, WriteSeen = false };
+        }
+        else if (field.Length > 0 && shown.Any(s => s.Text == field)) { done.Add(field); field = ""; }
+    }
+    return (done, clears);
+}
+string Show((List<string> Done, int Clears) r) => $"[{string.Join(", ", r.Done)}], {r.Clears} clears";
+
+// Needles far away outranks the enemy at the barrier: Cactuar first, then the barrier enemy, nothing dropped.
+var farNeedles = RunThreat((f, d) => ([(7u, "cactuar", 200f), (8u, "grunt", 680f)], [(7u, "??? Needles")]));
+Check("barrier-vs-far-needles", farNeedles.Clears == 0 && farNeedles.Done.SequenceEqual(["cactuar", "grunt"]), Show(farNeedles));
+// A barrier word outranks it too.
+var vsWord = RunThreat((f, d) => ([(8u, "grunt", 680f), (9u, "shield me", 734f)], []));
+Check("barrier-word-before-barrier-enemy", vsWord.Clears == 0 && vsWord.Done.SequenceEqual(["shield me", "grunt"]), Show(vsWord));
+// Needles starts while the barrier enemy's word is half typed: that word is finished, not dropped, then the Cactuar.
+var lateNeedles = RunThreat((f, d) => ([(7u, "cactuar", 200f), (8u, "grunt", 680f)], f >= 2 ? [(7u, "??? Needles")] : []));
+Check("barrier-word-kept-when-needles-starts", lateNeedles.Clears == 0 && lateNeedles.Done.SequenceEqual(["grunt", "cactuar"]),
+    Show(lateNeedles));
+// An enemy reaches the barrier while a Cactuar's word is half typed: the Cactuar is finished first.
+var lateBarrier = RunThreat((f, d) => ([(7u, "cactuar", 200f), (8u, "grunt", f >= 3 ? 680f : 400f)], []));
+Check("cactuar-kept-when-enemy-reaches-barrier", lateBarrier.Clears == 0 && lateBarrier.Done.SequenceEqual(["cactuar", "grunt"]),
+    Show(lateBarrier));
+// A label bobbing across the barrier line every frame, against a casting add far away: no thrash, both typed whole.
+var bobbing = RunThreat((f, d) => ([(6u, "sweeper", 350f), (8u, "grunt", f % 2 == 0 ? 655f : 665f)], [(6u, "Burst")]));
+Check("barrier-line-bobbing", bobbing.Clears == 0 && bobbing.Done.Count == 2 && bobbing.Done.Contains("sweeper") &&
+    bobbing.Done.Contains("grunt"), Show(bobbing));
+// Shared prefix: "s" typed for the far casting add when "sahagin" reaches the barrier - continued, not cleared.
+var sharedS = RunThreat((f, d) => ([(6u, "sweeper", 350f), (8u, "sahagin", f >= 1 ? 680f : 400f)], [(6u, "Burst")]));
+Check("barrier-shared-prefix", sharedS.Clears == 0 && sharedS.Done.SequenceEqual(["sahagin", "sweeper"]), Show(sharedS));
+// Control: the loop does see a clear - a barrier word appearing mid-word on a word it cannot continue.
+var ctrlClear = RunThreat((f, d) => ([(8u, "grunt", 680f), .. (f >= 2 && !d.Contains("ward") ? new[] { (9u, "ward", 734f) } : [])], []));
+Check("barrier-loop-control-clears", ctrlClear.Clears == 1 && ctrlClear.Done.SequenceEqual(["ward", "grunt"]), Show(ctrlClear));
+// The boss low on screen never takes the barrier rank: the casting add still goes first.
+var lowBoss = RunThreat((f, d) => ([(2u, "airbuster", 690f), (6u, "sweeper", 350f)], [(6u, "Burst")]));
+Check("boss-never-barrier-rank", lowBoss.Clears == 0 && lowBoss.Done.SequenceEqual(["sweeper", "airbuster"]), Show(lowBoss));
 
 // ---- Wins from achievement progress, and words seen. ----
 Check("wins-iv-read", Stats.WinsFromProgress(4073, 37, 100) == 37, "expected 37");
