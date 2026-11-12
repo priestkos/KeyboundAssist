@@ -26,11 +26,6 @@ internal sealed class Configuration : IPluginConfiguration
     // Clears read from the Masterstroke achievements; null until one has been read.
     public int? AchievementWins { get; set; }
 
-    // The player's own count, shown instead of the achievement one when it diverges.
-    public bool UseManualWins { get; set; }
-
-    public int ManualWins { get; set; }
-
     // Replace, not merge: Json.NET otherwise reuses the initialised collection on load.
     [JsonProperty(ObjectCreationHandling = ObjectCreationHandling.Replace)]
     public Dictionary<string, int> WordsSeen { get; set; } = [];
@@ -45,7 +40,6 @@ internal sealed class Configuration : IPluginConfiguration
         if (SubmitDelayMinMs > SubmitDelayMaxMs) (SubmitDelayMinMs, SubmitDelayMaxMs) = (SubmitDelayMaxMs, SubmitDelayMinMs);
         SubmitDelayMinMs = Math.Clamp(SubmitDelayMinMs, TypingPlan.SubmitFloorMs, TypingPlan.SubmitCapMs);
         SubmitDelayMaxMs = Math.Clamp(SubmitDelayMaxMs, SubmitDelayMinMs, TypingPlan.SubmitCapMs);
-        ManualWins = Math.Max(0, ManualWins);
         WordsSeen ??= [];
     }
 }

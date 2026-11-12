@@ -187,7 +187,7 @@ public sealed class Plugin : IDalamudPlugin
         awaitingSync = false;
         configuration.AchievementWins = wins;
         syncStatus = $"Achievements: {wins} clears, read {DateTime.Now:HH:mm}." +
-                     (wins >= 100 ? " Masterstroke IV counts to 100; past that, use a manual count." : "");
+                     (wins >= 100 ? " Masterstroke IV counts to 100, so the reading stops there." : "");
         SaveConfig();
     }
 
@@ -234,7 +234,7 @@ public sealed class Plugin : IDalamudPlugin
         var player = Objects.LocalPlayer;
         // Dynamic Sensory Jammer and Cursed Gaze punish any typing for their whole cast, and the field's
         // own lock only reports them once it has already engaged. The cast bar is the early warning.
-        var halted = CastBar.Blocked(GameGui, now, out var holdReason);
+        var halted = CastBar.Blocked(GameGui, Objects, now, out var holdReason);
         var prompts = PromptMap.WithCasts(
             GameState.Prompts(GameGui, Objects, player?.Position ?? default, player != null), CastBar.Casts, cactuarWords);
         wordsDirty |= Stats.Observe(configuration.WordsSeen, shownWords, prompts, now);

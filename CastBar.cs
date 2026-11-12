@@ -1,10 +1,12 @@
+using Dalamud.Game.ClientState.Objects.Enums;
+using Dalamud.Game.ClientState.Objects.Types;
 using Dalamud.Game.Text.SeStringHandling;
 using Dalamud.Plugin.Services;
 using FFXIVClientStructs.FFXIV.Component.GUI;
 
 namespace KeyboundAssist;
 
-// The duty's enemy cast bar is the only early warning for a locking cast. Dynamic Sensory Jammer and
+// The caster's cast state and the duty's enemy cast bar are the early warning for a locking cast. Dynamic Sensory Jammer and
 // Cursed Gaze punish typing for their whole cast, and the input field's own lock only reports that once
 // it has already engaged, so the bar is read ahead of it. Label scanning follows XivType (MIT), which
 // detects the same two spells against this client; the hold window follows AutoKeyboundBrawler's live
@@ -22,9 +24,22 @@ internal static unsafe class CastBar
     // "Interrupted!" banner (AutoKeyboundBrawler's map), so they are not spells.
     internal static (uint Slot, string Spell)[] Casts { get; private set; } = [];
 
+    // Locking cast action ids: Dynamic Sensory Jammer (two rows) and Cursed Gaze. XivType and AutoKeyboundBrawler agree.
+    private static bool Locking(uint actionId) => actionId is 49532 or 49702 or 49529;
+
     // True while a locking cast is up, and for a few seconds after it resolves.
-    internal static bool Blocked(IGameGui gui, long now, out string reason)
+    internal static bool Blocked(IGameGui gui, IObjectTable objects, long now, out string reason)
     {
+        // The caster's own cast state, read from the object table, does not wait on the cast bar label being drawn,
+        // so whichever source sees the cast first starts the hold.
+        foreach (var caster in objects.OfType<IBattleChara>())
+        {
+            if (caster.ObjectKind != ObjectKind.BattleNpc || !caster.IsCasting || !Locking(caster.CastActionId)) continue;
+            holdUntil = now + HoldAfterCastMs;
+            heldSpell = caster.CastActionId == 49529 ? "Cursed Gaze" : "Dynamic Sensory Jammer";
+            break;
+        }
+
         var labels = Labels(gui);
         Casts = labels.Where(l => l.Slot != 0 && l.Node is not (2 or 3 or 5) && l.Text.Any(char.IsLetter) &&
                                   !l.Text.Equals("Interrupted!", StringComparison.OrdinalIgnoreCase) &&

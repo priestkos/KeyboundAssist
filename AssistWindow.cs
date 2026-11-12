@@ -71,29 +71,10 @@ internal sealed class AssistWindow(Configuration configuration, Action save, Fun
         ImGui.TextWrapped(status());
 
         ImGui.Separator();
-        var wins = configuration.UseManualWins ? configuration.ManualWins : configuration.AchievementWins;
-        ImGui.TextUnformatted(wins is { } count ? $"Wins: {count}" : "Wins: not read yet");
+        ImGui.TextUnformatted(configuration.AchievementWins is { } count ? $"Wins: {count}" : "Wins: not read yet");
         ImGui.SameLine();
         if (ImGui.Button("Sync from achievements")) requestSync();
         ImGui.TextDisabled(syncStatus());
-        var manual = configuration.UseManualWins;
-        if (ImGui.Checkbox("Use a manual count", ref manual))
-        {
-            configuration.UseManualWins = manual;
-            // Start the manual count from the achievement one rather than from zero.
-            if (manual && configuration.ManualWins == 0) configuration.ManualWins = configuration.AchievementWins ?? 0;
-            save();
-        }
-        if (manual)
-        {
-            var manualWins = configuration.ManualWins;
-            ImGui.SetNextItemWidth(120f);
-            if (ImGui.InputInt("Manual wins", ref manualWins))
-            {
-                configuration.ManualWins = Math.Max(0, manualWins);
-                save();
-            }
-        }
 
         if (ImGui.CollapsingHeader($"Words seen ({configuration.WordsSeen.Count})"))
         {
