@@ -751,6 +751,16 @@ Check("threat-boss-never-cactuar", !PromptMap.WithCasts([T(2, "gigantender", 0)]
 var threatBarrier = PromptMap.WithCasts([T(7, "cactuar", 200), new(9, "shield me now", false, 0, 900, 1f, null, true)],
     [(7u, "??? Needles")], cactuarSheet);
 Check("threat-barrier-first", TypingPlan.Choose(threatBarrier, "", TargetPriority.Threat)?.Text == "shield me now", "expected barrier");
+// An enemy already attacking the barrier beats casting adds and idle Cactuars, but not Needles.
+Check("barrier-line-1080", PromptMap.IsAtBarrier(680, 1080) && !PromptMap.IsAtBarrier(600, 1080) && !PromptMap.IsAtBarrier(900, 0),
+    "barrier band");
+Prompt B(uint node, string text, float y) => new(node, text, false, 0, y, 1f, null, AtBarrier: PromptMap.IsAtBarrier(y, 1080));
+var atBarrier = PromptMap.WithCasts([B(6, "sweeper", 350), B(7, "cactuar", 200), B(8, "grunt", 680)], [(6u, "Burst")], cactuarSheet);
+Check("threat-barrier-enemy-first", TypingPlan.Choose(atBarrier, "", TargetPriority.Threat)?.Text == "grunt",
+    TypingPlan.Choose(atBarrier, "", TargetPriority.Threat)?.Text ?? "null");
+var barrierNeedles = PromptMap.WithCasts([B(7, "cactuar", 200), B(8, "grunt", 680)], [(7u, "??? Needles")], cactuarSheet);
+Check("threat-needles-before-barrier-enemy", TypingPlan.Choose(barrierNeedles, "", TargetPriority.Threat)?.Text == "cactuar",
+    TypingPlan.Choose(barrierNeedles, "", TargetPriority.Threat)?.Text ?? "null");
 
 // ---- Wins from achievement progress, and words seen. ----
 Check("wins-iv-read", Stats.WinsFromProgress(4073, 37, 100) == 37, "expected 37");

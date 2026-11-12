@@ -50,10 +50,11 @@ internal static class TypingPlan
     }
 
     // AutoKeyboundBrawler's tiers below the barrier word (which already outranks every mode): a Cactuar on
-    // Needles, other casting adds, idle Cactuars, regular enemies, then the boss - casting before idle.
+    // Needles, then an enemy already attacking the barrier (AKB has no such tier - it is live HP loss), other
+    // casting adds, idle Cactuars, regular enemies, then the boss - casting before idle.
     internal static int Threat(Prompt p) =>
         p.NodeId == PromptMap.BossSlot ? (p.Casting ? 6 : 7)
-        : p.Needles ? 1 : p.Casting ? 2 : p.Cactuar ? 3 : 4;
+        : p.Needles ? 1 : p.AtBarrier ? 2 : p.Casting ? 3 : p.Cactuar ? 4 : 5;
 
     // A fresh draw per character, so the typing has no fixed cadence. Equal bounds mean a fixed
     // delay; a hand-edited config with min > max is swapped rather than throwing out of Random.Next.

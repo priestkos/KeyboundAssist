@@ -127,7 +127,7 @@ public sealed class Plugin : IDalamudPlugin
                 {
                     var shown = GameState.Prompts(GameGui, Objects, default, false);
                     ChatGui.Print("[Keybound Assist] prompts: " + (shown.Length == 0 ? "none" :
-                        string.Join(", ", shown.Select(p => $"'{p.Text}' state {p.Label}{(p.Grey ? " grey" : "")}"))) + ".");
+                        string.Join(", ", shown.Select(p => $"'{p.Text}' state {p.Label} y {p.ScreenY:0}{(p.AtBarrier ? " barrier" : "")}{(p.Grey ? " grey" : "")}"))) + ".");
                 }
                 ChatGui.Print("[Keybound Assist] casts: " + (CastBar.Casts.Length == 0 ? "none" :
                     string.Join(", ", CastBar.Casts.Select(c => $"slot {c.Slot} '{c.Spell}'"))) + ".");

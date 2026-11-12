@@ -8,7 +8,7 @@ internal enum TargetPriority { ShortestPrompt = 0, NearestEnemy = 1, Threat = 2 
 // One enemy prompt. No Dalamud types, so tests/ compiles this file with the decision logic.
 internal readonly record struct Prompt(uint NodeId, string Text, bool Masked,
     float ScreenX, float ScreenY, float Scale, float? Distance, bool Defense = false,
-    bool Casting = false, bool Needles = false, bool Cactuar = false, bool Grey = false, ushort Label = 0);
+    bool Casting = false, bool Needles = false, bool Cactuar = false, bool Grey = false, ushort Label = 0, bool AtBarrier = false);
 
 internal readonly record struct ActorScreen(uint Entity, Vector2 Screen, Vector3 World);
 
@@ -47,6 +47,14 @@ internal static class PromptMap
 
     internal static bool IsDefensePrompt(float screenY, float screenHeight) =>
         screenHeight > 0 && screenY >= screenHeight * DefenseLineFraction;
+
+    // An enemy that reaches the barrier stops there and attacks it, draining party HP (AutoKeyboundBrawler: marching
+    // adds stop around ScreenY 680 of 1080). shortcut: 660/1080 leaves a 20 px margin above that one measurement;
+    // recalibrate from the y values /keyboundassist status prints if a barrier enemy is still passed over.
+    internal const float BarrierFraction = 660f / 1080f;
+
+    internal static bool IsAtBarrier(float screenY, float screenHeight) =>
+        screenHeight > 0 && screenY >= screenHeight * BarrierFraction;
     // Labels float above their enemy, so matching is by projected screen position. Calibrated live on
     // this client: a label sits within 48 px * scale of its enemy, and two enemies closer than 12 px
     // in screen X cannot be told apart.

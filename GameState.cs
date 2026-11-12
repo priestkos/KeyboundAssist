@@ -101,7 +101,7 @@ internal static unsafe class GameState
             prompts.Add(new Prompt(node->NodeId, text, masked,
                 node->ScreenX + node->Width * node->ScaleX / 2, screenY, node->ScaleX, null,
                 PromptMap.IsDefensePrompt(screenY, screenHeight), Grey: Grey(&component->UldManager, label),
-                Label: Label(&component->UldManager)));
+                Label: Label(&component->UldManager), AtBarrier: PromptMap.IsAtBarrier(screenY, screenHeight)));
         }
 
         if (!hasOrigin || prompts.Count == 0) return prompts.ToArray();

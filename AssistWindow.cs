@@ -60,7 +60,7 @@ internal sealed class AssistWindow(Configuration configuration, Action save, Fun
             save();
         }
         if (configuration.Priority == TargetPriority.Threat)
-            ImGui.TextDisabled("Needles Cactuar, casting adds, Cactuars, adds, then the boss; lowest first.");
+            ImGui.TextDisabled("Needles Cactuar, enemies at the barrier, casting adds, Cactuars, adds, then the boss; lowest first.");
 
         ImGui.Separator();
         ImGui.TextWrapped(configuration.AutoSubmit
