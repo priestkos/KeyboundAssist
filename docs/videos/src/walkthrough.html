@@ -73,6 +73,7 @@
       .s2 .ep1 { top: 220px; left: 180px; }
       .s2 .ep2 { top: 280px; left: 520px; }
       .s2 .ep3 { top: 340px; left: 860px; }
+      .s2 .cast-bar { top: 236px; left: 500px; opacity: 0; }
       .s3 .win { top: 64px; right: 48px; width: 360px; }
       .s3 .ep-near { top: 300px; left: 640px; }
       .s3 .ep-far { top: 260px; left: 320px; opacity: 0.75; }
@@ -219,10 +220,6 @@
             <button class="imgui-button" disabled>Sync from achievements</button>
           </div>
           <p class="wins-sync">Achievements: 37 clears, read 14:52.</p>
-          <label class="row">
-            <input type="checkbox" class="checkbox" disabled />
-            Use a manual count
-          </label>
           <div class="collapsing-header">Words seen (7)</div>
         </div>
       </div>
@@ -231,9 +228,10 @@
     <div id="scene2" class="scene s2">
       <div class="game-backdrop"></div>
       <div class="duty-title">Keybound Brawler · Territory 1359</div>
-      <div class="beat-label">In-duty typing — one character into KTGInput</div>
+      <div class="beat-label">In-duty typing — holds the moment a locking cast starts</div>
       <div class="duty-hud">
         <div class="enemy-prompt ep1 shortest" id="s2-prompt">bolt</div>
+        <div class="cast-bar" id="s2-cast">Dynamic Sensory Jammer<div class="cast-track"><div class="cast-fill" id="s2-cast-fill" style="width: 0%"></div></div></div>
         <div class="enemy-prompt ep2">thunderclap</div>
         <div class="enemy-prompt ep3">meteor</div>
         <div class="input-bar" id="s2-input">b</div>
@@ -377,7 +375,7 @@
     <script>
       const scenes = [
         { id: "scene1", start: 0, end: 2.6, caption: "Settings window — Fill prompts, delay range, auto-send, Threat target, wins, words seen" },
-        { id: "scene2", start: 2.2, end: 4.6, caption: "In-duty typing — one character at a time into KTGInput" },
+        { id: "scene2", start: 2.2, end: 4.6, caption: "In-duty typing — stops as soon as Dynamic Sensory Jammer starts casting, not partway through" },
         { id: "scene3", start: 4.2, end: 6.6, caption: "Cryptic Communications read + Nearest enemy targeting" },
         { id: "scene4", start: 6.2, end: 8.8, caption: "Greyed-out box — the half-typed word is cleared and the next target typed" },
         { id: "scene5", start: 8.4, end: 11.6, caption: "Word complete — press Enter, or auto-send after a fresh 300–500 ms delay" },
@@ -385,6 +383,7 @@
       ];
 
       const boltChars = "bolt";
+      const CAST_AT = 3.4;
       const strikeChars = "strike";
 
       const S5X = 857, S5Y = 200;
@@ -550,8 +549,11 @@
 
         const s2Opacity = sceneMotion(t, scenes[1].start, scenes[1].end).opacity;
         if (s2Opacity > 0.05) {
-          const local = t - 2.5;
-          const n = Math.min(boltChars.length, Math.max(0, Math.floor(local * 2.5)));
+          // The hold starts with the cast: the field stays at what was typed when the bar appeared.
+          const casting = t >= CAST_AT;
+          const n = Math.min(boltChars.length, Math.max(0, Math.floor((Math.min(t, CAST_AT) - 2.5) * 2.5)));
+          document.getElementById("s2-cast").style.opacity = casting ? "1" : "0";
+          document.getElementById("s2-cast-fill").style.width = casting ? `${clamp((t - CAST_AT) / 5, 0, 1) * 100}%` : "0%";
           const text = boltChars.slice(0, n);
           const input = document.getElementById("s2-input");
           const caret = n < boltChars.length && caretVisible(t) ? '<span class="typing-caret"></span>' : "";
@@ -560,7 +562,7 @@
           const prompt = document.getElementById("s2-prompt");
           prompt.style.transform = n > 0 ? "scale(1.03)" : "";
           prompt.style.boxShadow = n > 0 ? "0 0 16px rgba(125, 216, 125, 0.35)" : "";
-          document.getElementById("s2-status").textContent = n >= boltChars.length ? "'bolt' is typed. Press Enter." : "Typing 'bolt'.";
+          document.getElementById("s2-status").textContent = casting ? "Holding - Dynamic Sensory Jammer is locking input." : "Typing 'bolt'.";
         }
 
         const s3Opacity = sceneMotion(t, scenes[2].start, scenes[2].end).opacity;

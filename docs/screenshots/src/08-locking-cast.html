@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Mock-up: Locking cast hold</title>
+    <link rel="stylesheet" href="common.css" />
+    <style>
+      .dalamud-window { top: 64px; right: 48px; width: 380px; }
+      .ep1 { top: 220px; left: 180px; }
+      .ep2 { top: 280px; left: 520px; }
+      .ep3 { top: 340px; left: 860px; }
+      .cast-bar { top: 236px; left: 500px; }
+      .hold-note { position: absolute; top: 318px; left: 470px; font-size: 12px; color: #c9a227; }
+      .chat-panel { bottom: 64px; width: 820px; max-height: none; }
+      .chat-line { margin-bottom: 2px; }
+      .chat-input-hint { bottom: 42px; }
+      .input-bar { bottom: 250px; }
+    </style>
+  </head>
+  <body>
+    <div class="game-backdrop"></div>
+    <div class="duty-title">Keybound Brawler · Territory 1359</div>
+    <div class="mockup-banner">Mock-up</div>
+    <div class="scene-label">Locking cast — typing stops the moment Dynamic Sensory Jammer starts, and resumes 3.5 s after it resolves</div>
+
+    <div class="duty-hud">
+      <div class="enemy-prompt ep1 shortest">bolt</div>
+      <div class="cast-bar">Dynamic Sensory Jammer<div class="cast-track"><div class="cast-fill" style="width: 6%"></div></div></div>
+      <div class="enemy-prompt ep2">thunderclap</div>
+      <div class="hold-note">cast just started → hold, field left as it is</div>
+      <div class="enemy-prompt ep3">meteor</div>
+      <div class="input-bar">bo</div>
+    </div>
+
+    <div class="chat-panel">
+      <div class="chat-line echo">&gt; /keyboundassist status</div>
+      <div class="chat-line plugin">[Keybound Assist] Holding - Dynamic Sensory Jammer is locking input.</div>
+      <div class="chat-line plugin">[Keybound Assist] activity: 112 timer resets, 0 consecutive failures, duty agent cleared, last idle 0.4s.</div>
+      <div class="chat-line plugin">[Keybound Assist] prompts: 'bolt' state 17, 'thunderclap' state 17, 'meteor' state 17.</div>
+      <div class="chat-line plugin">[Keybound Assist] casts: slot 4 'Dynamic Sensory Jammer'.</div>
+    </div>
+    <div class="chat-input-hint">Illustrative chat lines — not a real client log</div>
+
+    <div class="dalamud-window">
+      <div class="dalamud-title">Keybound Assist</div>
+      <div class="dalamud-body">
+        <p class="status-line">Holding - Dynamic Sensory Jammer is locking input.</p>
+      </div>
+    </div>
+  </body>
+</html>
